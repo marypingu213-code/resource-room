@@ -1,0 +1,208 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>學生出缺席打卡系統</title>
+    <script src="https://unpkg.com/html5-qrcode"></script>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #f4f7f6;
+            margin: 0;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        h1 {
+            color: #333;
+        }
+        .controls {
+            margin-bottom: 20px;
+            background: #fff;
+            padding: 15px 30px;
+            border-radius: 50px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+        .controls label {
+            font-size: 24px;
+            margin: 0 15px;
+            cursor: pointer;
+            font-weight: bold;
+        }
+        .controls input[type="radio"] {
+            transform: scale(1.5);
+            margin-right: 10px;
+        }
+        #reader {
+            width: 100%;
+            max-width: 500px;
+            background: #fff;
+            border-radius: 10px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            overflow: hidden;
+            margin-bottom: 20px;
+        }
+        .record-container {
+            width: 100%;
+            max-width: 600px;
+            background: #fff;
+            border-radius: 10px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            padding: 20px;
+            box-sizing: border-box;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            text-align: center;
+        }
+        th, td {
+            padding: 12px;
+            border-bottom: 1px solid #ddd;
+            font-size: 18px;
+        }
+        th {
+            background-color: #4CAF50;
+            color: white;
+        }
+        .status-in {
+            color: #2196F3;
+            font-weight: bold;
+        }
+        .status-out {
+            color: #FF9800;
+            font-weight: bold;
+        }
+        /* 掃描成功時的提示文字 */
+        #message {
+            font-size: 24px;
+            color: #4CAF50;
+            font-weight: bold;
+            height: 35px;
+            margin-bottom: 10px;
+        }
+    </style>
+</head>
+<body>
+
+    <h1>📝 學生打卡系統</h1>
+
+    <div class="controls">
+        <label>
+            <input type="radio" name="status" value="上課" checked> 上課 (Check-in)
+        </label>
+        <label>
+            <input type="radio" name="status" value="下課"> 下課 (Check-out)
+        </label>
+    </div>
+
+    <div id="message"></div>
+
+    <div id="reader"></div>
+
+    <div class="record-container">
+        <h2>打卡紀錄</h2>
+        <table id="recordTable">
+            <thead>
+                <tr>
+                    <th>時間</th>
+                    <th>學生姓名</th>
+                    <th>狀態</th>
+                </tr>
+            </thead>
+            <tbody id="recordBody">
+                </tbody>
+        </table>
+    </div>
+
+    <script>
+        let lastScanContent = "";
+        let lastScanTime = 0;
+
+        // 產生「嗶」聲的函數 (Web Audio API)
+        function playBeep() {
+            const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            const oscillator = audioCtx.createOscillator();
+            const gainNode = audioCtx.createGain();
+            
+            oscillator.type = 'sine';
+            oscillator.frequency.value = 1000; // 頻率 1000Hz (標準嗶聲)
+            
+            gainNode.gain.setValueAtTime(1, audioCtx.currentTime);
+            gainNode.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.1);
+            
+            oscillator.connect(gainNode);
+            gainNode.connect(audioCtx.destination);
+            
+            oscillator.start();
+            oscillator.stop(audioCtx.currentTime + 0.1);
+        }
+
+        // 處理掃描成功的邏輯
+        function onScanSuccess(decodedText, decodedResult) {
+            const currentTime = new Date().getTime();
+            
+            // 防止同一個 QR Code 在 3 秒內被重複掃描
+            if (decodedText === lastScanContent && (currentTime - lastScanTime) < 3000) {
+                return; 
+            }
+
+            lastScanContent = decodedText;
+            lastScanTime = currentTime;
+
+            // 1. 播放嗶聲
+            playBeep();
+
+            // 2. 取得現在時間
+            const now = new Date();
+            const timeString = now.getHours().toString().padStart(2, '0') + ':' + 
+                               now.getMinutes().toString().padStart(2, '0') + ':' + 
+                               now.getSeconds().toString().padStart(2, '0');
+
+            // 3. 取得目前的狀態 (上課或下課)
+            const statusRadios = document.getElementsByName('status');
+            let currentStatus = "上課";
+            for (let radio of statusRadios) {
+                if (radio.checked) {
+                    currentStatus = radio.value;
+                    break;
+                }
+            }
+
+            // 4. 更新畫面提示
+            const msgDiv = document.getElementById('message');
+            msgDiv.innerText = `✅ 成功：${decodedText} 已${currentStatus}`;
+            setTimeout(() => msgDiv.innerText = "", 3000); // 3秒後清除提示
+
+            // 5. 將紀錄加到表格中
+            const tbody = document.getElementById('recordBody');
+            const row = document.createElement('tr');
+            
+            const statusClass = currentStatus === "上課" ? "status-in" : "status-out";
+
+            row.innerHTML = `
+                <td>${timeString}</td>
+                <td>${decodedText}</td>
+                <td class="${statusClass}">${currentStatus}</td>
+            `;
+            
+            // 將新紀錄插在最上方
+            tbody.insertBefore(row, tbody.firstChild);
+        }
+
+        function onScanFailure(error) {
+            // 掃描失敗（沒對準時）會在背景不斷觸發，這裡不需要特別處理，保持空白即可
+        }
+
+        // 初始化 QR Code 掃描器
+        // fps: 每秒掃描次數, qrbox: 掃描框大小
+        let html5QrcodeScanner = new Html5QrcodeScanner(
+            "reader",
+            { fps: 10, qrbox: {width: 250, height: 250} },
+            /* verbose= */ false);
+        html5QrcodeScanner.render(onScanSuccess, onScanFailure);
+    </script>
+</body>
+</html>
