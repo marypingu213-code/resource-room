@@ -3,8 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>學生出缺席打卡系統</title>
-    <script src="https://unpkg.com/html5-qrcode"></script>
+    <title>NFC 學生出缺席打卡系統</title>
     <style>
         body {
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
@@ -15,9 +14,7 @@
             flex-direction: column;
             align-items: center;
         }
-        h1 {
-            color: #333;
-        }
+        h1 { color: #333; }
         .controls {
             margin-bottom: 20px;
             background: #fff;
@@ -35,14 +32,21 @@
             transform: scale(1.5);
             margin-right: 10px;
         }
-        #reader {
-            width: 100%;
-            max-width: 500px;
-            background: #fff;
-            border-radius: 10px;
-            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
-            overflow: hidden;
+        #scan-btn {
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            padding: 15px 40px;
+            font-size: 24px;
+            border-radius: 50px;
+            cursor: pointer;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.2);
             margin-bottom: 20px;
+            transition: background-color 0.3s;
+        }
+        #scan-btn:active {
+            background-color: #388E3C;
+            transform: translateY(2px);
         }
         .record-container {
             width: 100%;
@@ -63,31 +67,22 @@
             border-bottom: 1px solid #ddd;
             font-size: 18px;
         }
-        th {
-            background-color: #4CAF50;
-            color: white;
-        }
-        .status-in {
-            color: #2196F3;
-            font-weight: bold;
-        }
-        .status-out {
-            color: #FF9800;
-            font-weight: bold;
-        }
-        /* 掃描成功時的提示文字 */
+        th { background-color: #4CAF50; color: white; }
+        .status-in { color: #2196F3; font-weight: bold; }
+        .status-out { color: #FF9800; font-weight: bold; }
         #message {
             font-size: 24px;
             color: #4CAF50;
             font-weight: bold;
             height: 35px;
-            margin-bottom: 10px;
+            margin-bottom: 15px;
         }
+        .error-msg { color: #f44336 !important; }
     </style>
 </head>
 <body>
 
-    <h1>📝 學生打卡系統</h1>
+    <h1>💳 NFC 學生打卡系統</h1>
 
     <div class="controls">
         <label>
@@ -98,9 +93,9 @@
         </label>
     </div>
 
-    <div id="message"></div>
+    <button id="scan-btn">👉 點擊開始感應 NFC</button>
 
-    <div id="reader"></div>
+    <div id="message"></div>
 
     <div class="record-container">
         <h2>打卡紀錄</h2>
@@ -108,7 +103,7 @@
             <thead>
                 <tr>
                     <th>時間</th>
-                    <th>學生姓名</th>
+                    <th>卡片晶片序號</th>
                     <th>狀態</th>
                 </tr>
             </thead>
@@ -118,91 +113,105 @@
     </div>
 
     <script>
-        let lastScanContent = "";
+        let lastScanSerialNumber = "";
         let lastScanTime = 0;
 
-        // 產生「嗶」聲的函數 (Web Audio API)
+        // 產生「嗶」聲
         function playBeep() {
             const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
             const oscillator = audioCtx.createOscillator();
             const gainNode = audioCtx.createGain();
-            
             oscillator.type = 'sine';
-            oscillator.frequency.value = 1000; // 頻率 1000Hz (標準嗶聲)
-            
+            oscillator.frequency.value = 1500; // 音調稍微調高一點，類似刷卡機
             gainNode.gain.setValueAtTime(1, audioCtx.currentTime);
             gainNode.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.1);
-            
             oscillator.connect(gainNode);
             gainNode.connect(audioCtx.destination);
-            
             oscillator.start();
             oscillator.stop(audioCtx.currentTime + 0.1);
         }
 
-        // 處理掃描成功的邏輯
-        function onScanSuccess(decodedText, decodedResult) {
-            const currentTime = new Date().getTime();
-            
-            // 防止同一個 QR Code 在 3 秒內被重複掃描
-            if (decodedText === lastScanContent && (currentTime - lastScanTime) < 3000) {
-                return; 
+        const scanBtn = document.getElementById('scan-btn');
+        const msgDiv = document.getElementById('message');
+
+        scanBtn.addEventListener('click', async () => {
+            // 檢查瀏覽器是否支援 Web NFC
+            if (!("NDEFReader" in window)) {
+                msgDiv.innerText = "❌ 你的設備或瀏覽器不支援 NFC 感應 (請使用 Android Chrome)";
+                msgDiv.className = "error-msg";
+                return;
             }
 
-            lastScanContent = decodedText;
-            lastScanTime = currentTime;
+            try {
+                const ndef = new NDEFReader();
+                await ndef.scan();
+                
+                scanBtn.innerText = "📡 感應器已開啟，請將卡片靠近設備背面";
+                scanBtn.style.backgroundColor = "#2196F3";
+                msgDiv.innerText = "";
+                msgDiv.className = "";
 
-            // 1. 播放嗶聲
-            playBeep();
+                // 當讀取到 NFC 卡片時觸發
+                ndef.addEventListener("reading", ({ serialNumber }) => {
+                    const currentTime = new Date().getTime();
+                    
+                    // 防連刷機制 (3秒)
+                    if (serialNumber === lastScanSerialNumber && (currentTime - lastScanTime) < 3000) {
+                        return; 
+                    }
 
-            // 2. 取得現在時間
-            const now = new Date();
-            const timeString = now.getHours().toString().padStart(2, '0') + ':' + 
-                               now.getMinutes().toString().padStart(2, '0') + ':' + 
-                               now.getSeconds().toString().padStart(2, '0');
+                    lastScanSerialNumber = serialNumber;
+                    lastScanTime = currentTime;
 
-            // 3. 取得目前的狀態 (上課或下課)
-            const statusRadios = document.getElementsByName('status');
-            let currentStatus = "上課";
-            for (let radio of statusRadios) {
-                if (radio.checked) {
-                    currentStatus = radio.value;
-                    break;
-                }
+                    playBeep();
+
+                    // 取得狀態與時間
+                    const now = new Date();
+                    const timeString = now.getHours().toString().padStart(2, '0') + ':' + 
+                                       now.getMinutes().toString().padStart(2, '0') + ':' + 
+                                       now.getSeconds().toString().padStart(2, '0');
+
+                    const statusRadios = document.getElementsByName('status');
+                    let currentStatus = "上課";
+                    for (let radio of statusRadios) {
+                        if (radio.checked) {
+                            currentStatus = radio.value;
+                            break;
+                        }
+                    }
+
+                    // 顯示成功訊息 (這裡抓取的是卡片內建的硬體晶片序號)
+                    msgDiv.innerText = `✅ 成功：卡號 ${serialNumber} 已${currentStatus}`;
+                    msgDiv.className = "";
+                    setTimeout(() => { 
+                        if(msgDiv.innerText.includes(serialNumber)) msgDiv.innerText = ""; 
+                    }, 3000);
+
+                    // 將紀錄加到表格中
+                    const tbody = document.getElementById('recordBody');
+                    const row = document.createElement('tr');
+                    const statusClass = currentStatus === "上課" ? "status-in" : "status-out";
+
+                    row.innerHTML = `
+                        <td>${timeString}</td>
+                        <td>${serialNumber}</td>
+                        <td class="${statusClass}">${currentStatus}</td>
+                    `;
+                    tbody.insertBefore(row, tbody.firstChild);
+                });
+
+                // 處理讀取錯誤（例如卡片拿開太快）
+                ndef.addEventListener("readingerror", () => {
+                    msgDiv.innerText = "⚠️ 讀取失敗，請重新感應卡片";
+                    msgDiv.className = "error-msg";
+                    setTimeout(() => msgDiv.innerText = "", 3000);
+                });
+
+            } catch (error) {
+                msgDiv.innerText = `❌ 無法開啟 NFC：${error.message}`;
+                msgDiv.className = "error-msg";
             }
-
-            // 4. 更新畫面提示
-            const msgDiv = document.getElementById('message');
-            msgDiv.innerText = `✅ 成功：${decodedText} 已${currentStatus}`;
-            setTimeout(() => msgDiv.innerText = "", 3000); // 3秒後清除提示
-
-            // 5. 將紀錄加到表格中
-            const tbody = document.getElementById('recordBody');
-            const row = document.createElement('tr');
-            
-            const statusClass = currentStatus === "上課" ? "status-in" : "status-out";
-
-            row.innerHTML = `
-                <td>${timeString}</td>
-                <td>${decodedText}</td>
-                <td class="${statusClass}">${currentStatus}</td>
-            `;
-            
-            // 將新紀錄插在最上方
-            tbody.insertBefore(row, tbody.firstChild);
-        }
-
-        function onScanFailure(error) {
-            // 掃描失敗（沒對準時）會在背景不斷觸發，這裡不需要特別處理，保持空白即可
-        }
-
-        // 初始化 QR Code 掃描器
-        // fps: 每秒掃描次數, qrbox: 掃描框大小
-        let html5QrcodeScanner = new Html5QrcodeScanner(
-            "reader",
-            { fps: 10, qrbox: {width: 250, height: 250} },
-            /* verbose= */ false);
-        html5QrcodeScanner.render(onScanSuccess, onScanFailure);
+        });
     </script>
 </body>
 </html>
