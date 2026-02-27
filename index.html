@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>NFC 學生出缺席打卡系統</title>
+    <title>NFC 學生自動打卡系統</title>
     <style>
         body {
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
@@ -15,22 +15,11 @@
             align-items: center;
         }
         h1 { color: #333; }
-        .controls {
+        .info-text {
+            color: #666;
+            font-size: 16px;
             margin-bottom: 20px;
-            background: #fff;
-            padding: 15px 30px;
-            border-radius: 50px;
-            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
-        }
-        .controls label {
-            font-size: 24px;
-            margin: 0 15px;
-            cursor: pointer;
-            font-weight: bold;
-        }
-        .controls input[type="radio"] {
-            transform: scale(1.5);
-            margin-right: 10px;
+            text-align: center;
         }
         #scan-btn {
             background-color: #4CAF50;
@@ -76,22 +65,15 @@
             font-weight: bold;
             height: 35px;
             margin-bottom: 15px;
+            text-align: center;
         }
         .error-msg { color: #f44336 !important; }
     </style>
 </head>
 <body>
 
-    <h1>💳 NFC 學生打卡系統</h1>
-
-    <div class="controls">
-        <label>
-            <input type="radio" name="status" value="上課" checked> 上課 (Check-in)
-        </label>
-        <label>
-            <input type="radio" name="status" value="下課"> 下課 (Check-out)
-        </label>
-    </div>
+    <h1>💳 NFC 學生自動打卡系統</h1>
+    <div class="info-text">💡 系統會自動判斷：同一張卡片第一次感應為「上課」，第二次為「下課」</div>
 
     <button id="scan-btn">👉 點擊開始感應 NFC</button>
 
@@ -103,7 +85,7 @@
             <thead>
                 <tr>
                     <th>時間</th>
-                    <th>卡片晶片序號</th>
+                    <th>學生姓名 / 卡號</th>
                     <th>狀態</th>
                 </tr>
             </thead>
@@ -116,13 +98,22 @@
         let lastScanSerialNumber = "";
         let lastScanTime = 0;
 
+        // 【名單設定】在這裡把卡片的晶片序號對應到學生的名字
+        const studentNames = {
+            "04:a1:b2:c3:d4:e5:f6": "王小明",
+            "04:11:22:33:44:55:66": "陳大頭"
+        };
+
+        // 【狀態記憶】系統會把每個卡號目前的狀態記在這裡
+        const studentStatus = {};
+
         // 產生「嗶」聲
         function playBeep() {
             const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
             const oscillator = audioCtx.createOscillator();
             const gainNode = audioCtx.createGain();
             oscillator.type = 'sine';
-            oscillator.frequency.value = 1500; // 音調稍微調高一點，類似刷卡機
+            oscillator.frequency.value = 1500; 
             gainNode.gain.setValueAtTime(1, audioCtx.currentTime);
             gainNode.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.1);
             oscillator.connect(gainNode);
@@ -135,7 +126,6 @@
         const msgDiv = document.getElementById('message');
 
         scanBtn.addEventListener('click', async () => {
-            // 檢查瀏覽器是否支援 Web NFC
             if (!("NDEFReader" in window)) {
                 msgDiv.innerText = "❌ 你的設備或瀏覽器不支援 NFC 感應 (請使用 Android Chrome)";
                 msgDiv.className = "error-msg";
@@ -151,11 +141,10 @@
                 msgDiv.innerText = "";
                 msgDiv.className = "";
 
-                // 當讀取到 NFC 卡片時觸發
                 ndef.addEventListener("reading", ({ serialNumber }) => {
                     const currentTime = new Date().getTime();
                     
-                    // 防連刷機制 (3秒)
+                    // 防連刷機制 (3秒內不重複感應同一張卡)
                     if (serialNumber === lastScanSerialNumber && (currentTime - lastScanTime) < 3000) {
                         return; 
                     }
@@ -165,26 +154,30 @@
 
                     playBeep();
 
-                    // 取得狀態與時間
+                    // 取得現在時間
                     const now = new Date();
                     const timeString = now.getHours().toString().padStart(2, '0') + ':' + 
                                        now.getMinutes().toString().padStart(2, '0') + ':' + 
                                        now.getSeconds().toString().padStart(2, '0');
 
-                    const statusRadios = document.getElementsByName('status');
+                    // 判斷學生姓名 (找不到對應名字就顯示原始序號)
+                    const displayName = studentNames[serialNumber] || serialNumber;
+
+                    // 自動切換上下課狀態
                     let currentStatus = "上課";
-                    for (let radio of statusRadios) {
-                        if (radio.checked) {
-                            currentStatus = radio.value;
-                            break;
-                        }
+                    if (studentStatus[serialNumber] === "上課") {
+                        currentStatus = "下課";
+                        studentStatus[serialNumber] = "下課"; 
+                    } else {
+                        currentStatus = "上課";
+                        studentStatus[serialNumber] = "上課"; 
                     }
 
-                    // 顯示成功訊息 (這裡抓取的是卡片內建的硬體晶片序號)
-                    msgDiv.innerText = `✅ 成功：卡號 ${serialNumber} 已${currentStatus}`;
+                    // 顯示成功訊息
+                    msgDiv.innerText = `✅ 成功：${displayName} 已${currentStatus}`;
                     msgDiv.className = "";
                     setTimeout(() => { 
-                        if(msgDiv.innerText.includes(serialNumber)) msgDiv.innerText = ""; 
+                        if(msgDiv.innerText.includes(displayName)) msgDiv.innerText = ""; 
                     }, 3000);
 
                     // 將紀錄加到表格中
@@ -194,13 +187,12 @@
 
                     row.innerHTML = `
                         <td>${timeString}</td>
-                        <td>${serialNumber}</td>
+                        <td>${displayName}</td>
                         <td class="${statusClass}">${currentStatus}</td>
                     `;
                     tbody.insertBefore(row, tbody.firstChild);
                 });
 
-                // 處理讀取錯誤（例如卡片拿開太快）
                 ndef.addEventListener("readingerror", () => {
                     msgDiv.innerText = "⚠️ 讀取失敗，請重新感應卡片";
                     msgDiv.className = "error-msg";
