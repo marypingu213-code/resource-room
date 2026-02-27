@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>📱 手機掃描端</title>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
+    <style>
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; text-align: center; padding: 50px 20px; background: #f4f7f6; margin: 0; display: flex; flex-direction: column; align-items: center; }
+        h1 { color: #333; margin-bottom: 30px;}
+        #scan-btn { background: #4CAF50; color: white; border: none; padding: 20px 40px; font-size: 24px; border-radius: 50px; cursor: pointer; box-shadow: 0 4px 6px rgba(0,0,0,0.2); transition: background-color 0.3s;}
+        #scan-btn:active { background: #388E3C; transform: translateY(2px); }
+        #message { font-size: 24px; color: #4CAF50; font-weight: bold; margin-top: 30px; height: 35px;}
+        .error-msg { color: #f44336 !important; }
+    </style>
+</head>
+<body>
+    <h1>📱 NFC 掃描器</h1>
+    <button id="scan-btn">👉 點擊開始感應 NFC</button>
+    <div id="message"></div>
+
+    <script>
+        // 你專屬的 Firebase 設定
+        const firebaseConfig = {
+            apiKey: "AIzaSyAPFTAwM7yxBsUQ0NYcC7tMUBYna6em0XU",
+            authDomain: "resource-room-a3986.firebaseapp.com",
+            databaseURL: "https://resource-room-a3986-default-rtdb.firebaseio.com",
+            projectId: "resource-room-a3986",
+            storageBucket: "resource-room-a3986.firebasestorage.app",
+            messagingSenderId: "76472526974",
+            appId: "1:76472526974:web:7625a7719318206883d02f",
+            measurementId: "G-CBJ8SD0DRQ"
+        };
+
+        // 初始化 Firebase
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.database();
+
+        // 名單與狀態記憶
+        const studentNames = {
+            "04:a1:b2:c3:d4:e5:f6": "阿白",
+            "04:11:22:33:44:55:66": "土土"
+        };
+        const studentStatus = {};
+        let lastScanSerialNumber = "";
+        let lastScanTime = 0;
+
+        function playBeep() {
+            const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            const osc = audioCtx.createOscillator();
+            const gainNode = audioCtx.createGain();
+            osc.type = 'sine';
+            osc.frequency.value = 1500; 
+            gainNode.gain.setValueAtTime(1, audioCtx.currentTime);
+            gainNode.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.1);
+            osc.connect(gainNode);
+            gainNode.connect(audioCtx.destination);
+            osc.start();
+            osc.stop(audioCtx.currentTime + 0.1);
+        }
+
+        const scanBtn = document.getElementById('scan-btn');
+        const msgDiv = document.getElementById('message');
+
+        scanBtn.addEventListener('click', async () => {
+            if (!("NDEFReader" in window)) {
+                msgDiv.innerText = "❌ 你的設備不支援 NFC";
+                msgDiv.className = "error-msg";
+                return;
+            }
+            try {
+                const ndef = new NDEFReader();
+                await ndef.scan();
+                scanBtn.innerText = "📡 感應器開啟中...";
+                scanBtn.style.backgroundColor = "#2196F3";
+                
+                ndef.addEventListener("reading", ({ serialNumber }) => {
+                    const currentTime = new Date().getTime();
+                    if (serialNumber === lastScanSerialNumber && (currentTime - lastScanTime) < 3000) return;
+
+                    lastScanSerialNumber = serialNumber;
+                    lastScanTime = currentTime;
+                    playBeep();
+
+                    const now = new Date();
+                    const timeString = now.getHours().toString().padStart(2, '0') + ':' + 
+                                       now.getMinutes().toString().padStart(2, '0') + ':' + 
+                                       now.getSeconds().toString().padStart(2, '0');
+
+                    const displayName = studentNames[serialNumber] || serialNumber;
+
+                    let currentStatus = "上課";
+                    if (studentStatus[serialNumber] === "上課") {
+                        currentStatus = "下課";
+                        studentStatus[serialNumber] = "下課"; 
+                    } else {
+                        currentStatus = "上課";
+                        studentStatus[serialNumber] = "上課"; 
+                    }
+
+                    msgDiv.innerText = `✅ 成功：${displayName} 已${currentStatus}`;
+                    msgDiv.className = "";
+                    setTimeout(() => { if(msgDiv.innerText.includes(displayName)) msgDiv.innerText = ""; }, 3000);
+                    
+                    // 將資料上傳到雲端資料庫
+                    db.ref('attendance').push({
+                        time: timeString,
+                        name: displayName,
+                        status: currentStatus,
+                        timestamp: firebase.database.ServerValue.TIMESTAMP
+                    });
+
+                });
+            } catch (error) {
+                msgDiv.innerText = `❌ 錯誤：${error.message}`;
+                msgDiv.className = "error-msg";
+            }
+        });
+    </script>
+</body>
+</html>
