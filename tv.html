@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>📺 電視出缺席儀表板</title>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
+    <style>
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #f4f7f6; margin: 0; padding: 40px; display: flex; flex-direction: column; align-items: center; }
+        h1 { font-size: 48px; color: #333; margin-bottom: 10px; }
+        #latest-scan { font-size: 60px; color: #4CAF50; font-weight: bold; height: 80px; margin-bottom: 30px; text-shadow: 2px 2px 4px rgba(0,0,0,0.1); }
+        .record-container { width: 100%; max-width: 800px; background: #fff; border-radius: 15px; box-shadow: 0 8px 16px rgba(0,0,0,0.1); padding: 30px; }
+        table { width: 100%; border-collapse: collapse; text-align: center; font-size: 24px; }
+        th, td { padding: 15px; border-bottom: 2px solid #eee; }
+        th { background-color: #4CAF50; color: white; }
+        .status-in { color: #2196F3; font-weight: bold; }
+        .status-out { color: #FF9800; font-weight: bold; }
+    </style>
+</head>
+<body>
+
+    <h1>📝 資源班今日出缺席動態</h1>
+    
+    <div id="latest-scan">等待感應中...</div>
+
+    <div class="record-container">
+        <table>
+            <thead>
+                <tr>
+                    <th>時間</th>
+                    <th>學生姓名</th>
+                    <th>狀態</th>
+                </tr>
+            </thead>
+            <tbody id="recordBody">
+                </tbody>
+        </table>
+    </div>
+
+    <script>
+        // 同樣一組 Firebase 設定
+        const firebaseConfig = {
+            apiKey: "AIzaSyAPFTAwM7yxBsUQ0NYcC7tMUBYna6em0XU",
+            authDomain: "resource-room-a3986.firebaseapp.com",
+            databaseURL: "https://resource-room-a3986-default-rtdb.firebaseio.com",
+            projectId: "resource-room-a3986",
+            storageBucket: "resource-room-a3986.firebasestorage.app",
+            messagingSenderId: "76472526974",
+            appId: "1:76472526974:web:7625a7719318206883d02f",
+            measurementId: "G-CBJ8SD0DRQ"
+        };
+
+        // 初始化 Firebase
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.database();
+
+        const tbody = document.getElementById('recordBody');
+        const latestScanDiv = document.getElementById('latest-scan');
+
+        // 監聽雲端資料庫的動作
+        db.ref('attendance').on('child_added', (snapshot) => {
+            const data = snapshot.val();
+            
+            latestScanDiv.innerText = `👋 ${data.name} 已${data.status}！`;
+            latestScanDiv.style.color = data.status === "上課" ? "#2196F3" : "#FF9800";
+
+            const row = document.createElement('tr');
+            const statusClass = data.status === "上課" ? "status-in" : "status-out";
+
+            row.innerHTML = `
+                <td>${data.time}</td>
+                <td>${data.name}</td>
+                <td class="${statusClass}">${data.status}</td>
+            `;
+            tbody.insertBefore(row, tbody.firstChild);
+        });
+    </script>
+</body>
+</html>
