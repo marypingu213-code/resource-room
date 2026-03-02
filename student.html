@@ -3,64 +3,120 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>學生打卡確認畫面</title>
+    <title>學生打卡確認畫面 - 超級放大版</title>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
     <style>
         body { 
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
-            background-color: #FFF8E1; 
+            background-color: #FFF8E1; /* 溫暖柔和的背景色 */
             margin: 0; 
-            height: 100vh; 
+            height: 100vh; /* 滿版高度 */
+            overflow: hidden; /* 防止滾動條出現 */
             display: flex; 
             justify-content: center; 
             align-items: center; 
             text-align: center; 
         }
+        
         .card { 
             background: white; 
-            padding: 50px; 
-            border-radius: 40px; 
-            box-shadow: 0 15px 35px rgba(0,0,0,0.1); 
-            width: 90%; 
-            max-width: 800px; 
+            padding: 5vh; /* 調整內邊距 */
+            border-radius: 80px; /* 更大的圓角 */
+            box-shadow: 0 30px 70px rgba(0,0,0,0.2); /* 更深的陰影 */
+            width: 98%; /* 卡片寬度增加 */
+            max-width: 1400px; /* 增加最大寬度 */
+            height: 98vh; /* 高度也增加，幾乎充滿版面 */
+            display: flex;
+            flex-direction: column;
+            justify-content: space-around; /* 均勻分配垂直空間 */
+            align-items: center;
+            box-sizing: border-box; /* 確保 padding 包含在寬高內 */
         }
-        #idle-msg { font-size: 60px; color: #9e9e9e; font-weight: bold; }
-        #student-info { display: none; }
         
+        #idle-msg { 
+            font-size: 8vh; /* 大幅放大等待訊息 */
+            color: #9e9e9e; 
+            font-weight: bold; 
+        }
+        
+        #student-info { 
+            display: none; /* 預設先隱藏，有資料才顯示 */
+            width: 100%;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-around; /* 均勻分配垂直空間 */
+            align-items: center;
+        }
+        
+        /* 📸 照片大幅放大，設定為大圓形並加上陰影 */
         #s-photo {
-            width: 250px;
-            height: 250px;
+            width: 60vh; /* 從原本的 250px 大幅放大 */
+            height: 60vh; /* 從原本的 250px 大幅放大 */
             object-fit: cover;
             border-radius: 50%;
-            border: 8px solid #FFF8E1;
-            box-shadow: 0 10px 20px rgba(0,0,0,0.15);
-            margin: 0 auto 30px auto;
-            display: none; 
+            border: 15px solid #FFF8E1; /* 更寬的邊框 */
+            box-shadow: 0 20px 40px rgba(0,0,0,0.2); /* 更深的陰影 */
+            margin: 0; /* 移除 margin，由卡片的 justify-content 控制 */
+            display: none; /* 預設先隱藏，有照片才顯示 */
         }
 
-        #s-name { font-size: 90px; color: #333; margin: 0 0 20px 0; letter-spacing: 5px; }
-        .status { font-size: 70px; font-weight: bold; margin: 20px 0; padding: 20px; border-radius: 20px; }
+        /* 姓名大幅放大 */
+        #s-name { 
+            font-size: 20vh; /* 大幅放大姓名 */
+            color: #333; 
+            margin: 0; 
+            letter-spacing: 15px; /* 字間距加大 */
+        }
+        
+        /* 狀態大幅放大 */
+        .status { 
+            font-size: 15vh; /* 大幅放大狀態文字 */
+            font-weight: bold; 
+            margin: 0; 
+            padding: 3vh 8vh; /* 放大 padding */
+            border-radius: 50px; /* 更大的圓角 */
+        }
         .status.in { color: #4CAF50; background-color: #E8F5E9; }
         .status.out { color: #FF9800; background-color: #FFF3E0; }
-        .time { font-size: 35px; color: #757575; }
-        .duration { font-size: 40px; color: #E91E63; margin-top: 25px; font-weight: bold; }
+        
+        /* 時間大幅放大 */
+        .time { 
+            font-size: 8vh; /* 大幅放大時間文字 */
+            color: #757575; 
+            margin: 0;
+        }
+        
+        /* 本次時數大幅放大，並且在下課時呈現 */
+        .duration { 
+            font-size: 10vh; /* 大幅放大時數文字 */
+            color: #E91E63; 
+            margin-top: 2vh; 
+            font-weight: bold; 
+        }
     </style>
 </head>
 <body>
 
     <div class="card">
         <div id="idle-msg">請將卡片靠近手機背面感應 📱</div>
+
         <div id="student-info">
             <img id="s-photo" src="" alt="學生照片">
+            
             <h1 id="s-name">姓名</h1>
+            
             <div id="s-status" class="status">狀態</div>
+            
             <div id="s-time" class="time">時間</div>
+            
             <div id="s-duration" class="duration"></div>
         </div>
     </div>
 
     <script>
+        // 你專屬的 Firebase 設定檔 (已從你之前的截圖和紀錄中保留)
         const firebaseConfig = {
             apiKey: "AIzaSyAPFTAwM7yxBsUQ0NYcC7tMUBYna6em0XU",
             authDomain: "resource-room-a3986.firebaseapp.com",
@@ -71,10 +127,11 @@
             appId: "1:76472526974:web:7625a7719318206883d02f"
         };
 
+        // 初始化 Firebase
         firebase.initializeApp(firebaseConfig);
         const db = firebase.database();
 
-        // 📸 照片對應表：幫它加上 "images/" 告訴它去資料夾裡面找
+        // 📸 【照片與路徑設定】這裏幫你保留了正確的照片路徑 (在 images 資料夾下)
         const photoMap = {
             "宇軒": "images/P1.jpg",
             "睿穎": "images/P2.jpg",
@@ -85,20 +142,24 @@
             "承熙": "images/P7.jpg"
         };
 
+        // 監聽雲端資料庫
         db.ref('attendance').on('child_added', (snapshot) => {
             const data = snapshot.val();
             
+            // 隱藏預設文字，顯示學生資訊
             document.getElementById('idle-msg').style.display = 'none';
-            document.getElementById('student-info').style.display = 'block';
+            document.getElementById('student-info').style.display = 'flex'; // 用 flex 來重新排列
             
+            // 處理照片路徑與顯示
             const photoEl = document.getElementById('s-photo');
             if (photoMap[data.name]) {
-                photoEl.src = photoMap[data.name]; 
-                photoEl.style.display = 'block';   
+                photoEl.src = photoMap[data.name]; // 載入照片
+                photoEl.style.display = 'block';   // 顯示照片
             } else {
-                photoEl.style.display = 'none';    
+                photoEl.style.display = 'none';    // 若沒照片就隱藏大照片區塊
             }
 
+            // 更新畫面內容
             document.getElementById('s-name').innerText = data.name;
             document.getElementById('s-time').innerText = "打卡時間：" + data.time;
             
