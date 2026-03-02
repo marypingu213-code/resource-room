@@ -3,19 +3,24 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>📺 電視出缺席儀表板</title>
+    <title>📺 資源班今日出缺席動態</title>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
     <style>
-        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #f4f7f6; margin: 0; padding: 40px; display: flex; flex-direction: column; align-items: center; }
-        h1 { font-size: 48px; color: #333; margin-bottom: 10px; }
-        #latest-scan { font-size: 60px; color: #4CAF50; font-weight: bold; height: 80px; margin-bottom: 30px; text-shadow: 2px 2px 4px rgba(0,0,0,0.1); }
-        .record-container { width: 100%; max-width: 800px; background: #fff; border-radius: 15px; box-shadow: 0 8px 16px rgba(0,0,0,0.1); padding: 30px; }
-        table { width: 100%; border-collapse: collapse; text-align: center; font-size: 24px; }
-        th, td { padding: 15px; border-bottom: 2px solid #eee; }
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #f4f7f6; margin: 0; padding: 20px; display: flex; flex-direction: column; align-items: center; }
+        
+        /* 標題與最新動態放大 */
+        h1 { font-size: 60px; color: #333; margin-bottom: 10px; }
+        #latest-scan { font-size: 80px; color: #4CAF50; font-weight: bold; height: 110px; margin-bottom: 30px; text-shadow: 2px 2px 4px rgba(0,0,0,0.1); }
+        
+        /* 表格區塊加寬、字體放大 */
+        .record-container { width: 100%; max-width: 95%; background: #fff; border-radius: 15px; box-shadow: 0 8px 16px rgba(0,0,0,0.1); padding: 40px; box-sizing: border-box; }
+        table { width: 100%; border-collapse: collapse; text-align: center; font-size: 36px; } /* 表格字體放大到36px */
+        th, td { padding: 20px; border-bottom: 2px solid #eee; }
         th { background-color: #4CAF50; color: white; }
         .status-in { color: #2196F3; font-weight: bold; }
         .status-out { color: #FF9800; font-weight: bold; }
+        .duration-text { color: #E91E63; font-weight: bold; font-size: 32px; }
     </style>
 </head>
 <body>
@@ -31,6 +36,7 @@
                     <th>時間</th>
                     <th>學生姓名</th>
                     <th>狀態</th>
+                    <th>本次時數</th>
                 </tr>
             </thead>
             <tbody id="recordBody">
@@ -39,7 +45,7 @@
     </div>
 
     <script>
-        // 同樣一組 Firebase 設定
+        // 👇 請貼上你的 firebaseConfig 👇
         const firebaseConfig = {
             apiKey: "AIzaSyAPFTAwM7yxBsUQ0NYcC7tMUBYna6em0XU",
             authDomain: "resource-room-a3986.firebaseapp.com",
@@ -47,22 +53,29 @@
             projectId: "resource-room-a3986",
             storageBucket: "resource-room-a3986.firebasestorage.app",
             messagingSenderId: "76472526974",
-            appId: "1:76472526974:web:7625a7719318206883d02f",
-            measurementId: "G-CBJ8SD0DRQ"
+            appId: "1:76472526974:web:7625a7719318206883d02f"
         };
+        // 👆 貼上結束 👆
 
-        // 初始化 Firebase
         firebase.initializeApp(firebaseConfig);
         const db = firebase.database();
 
         const tbody = document.getElementById('recordBody');
         const latestScanDiv = document.getElementById('latest-scan');
 
-        // 監聽雲端資料庫的動作
         db.ref('attendance').on('child_added', (snapshot) => {
             const data = snapshot.val();
             
-            latestScanDiv.innerText = `👋 ${data.name} 已${data.status}！`;
+            // 判斷是否有時數資料
+            let durationHtml = `<span style="color: #ccc;">-</span>`;
+            let latestText = `👋 ${data.name} 已${data.status}！`;
+
+            if (data.status === "下課" && data.duration) {
+                durationHtml = `<span class="duration-text">${data.duration}</span>`;
+                latestText = `👋 ${data.name} 已下課！(共 ${data.duration})`;
+            }
+            
+            latestScanDiv.innerText = latestText;
             latestScanDiv.style.color = data.status === "上課" ? "#2196F3" : "#FF9800";
 
             const row = document.createElement('tr');
@@ -72,6 +85,7 @@
                 <td>${data.time}</td>
                 <td>${data.name}</td>
                 <td class="${statusClass}">${data.status}</td>
+                <td>${durationHtml}</td>
             `;
             tbody.insertBefore(row, tbody.firstChild);
         });
