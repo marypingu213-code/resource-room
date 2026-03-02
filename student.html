@@ -9,7 +9,7 @@
     <style>
         body { 
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
-            background-color: #FFF8E1; /* 溫暖柔和的背景色 */
+            background-color: #FFF8E1; 
             margin: 0; 
             height: 100vh; 
             display: flex; 
@@ -19,7 +19,7 @@
         }
         .card { 
             background: white; 
-            padding: 60px; 
+            padding: 50px; 
             border-radius: 40px; 
             box-shadow: 0 15px 35px rgba(0,0,0,0.1); 
             width: 90%; 
@@ -27,15 +27,28 @@
         }
         #idle-msg { font-size: 60px; color: #9e9e9e; font-weight: bold; }
         
-        #student-info { display: none; } /* 預設先隱藏，有資料才顯示 */
-        #s-name { font-size: 100px; color: #333; margin: 0 0 20px 0; letter-spacing: 5px; }
+        #student-info { display: none; }
         
-        .status { font-size: 80px; font-weight: bold; margin: 30px 0; padding: 20px; border-radius: 20px; }
+        /* 照片樣式：大圓形與陰影 */
+        #s-photo {
+            width: 250px;
+            height: 250px;
+            object-fit: cover;
+            border-radius: 50%;
+            border: 8px solid #FFF8E1;
+            box-shadow: 0 10px 20px rgba(0,0,0,0.15);
+            margin: 0 auto 30px auto;
+            display: none; /* 預設先隱藏，有照片才顯示 */
+        }
+
+        #s-name { font-size: 90px; color: #333; margin: 0 0 20px 0; letter-spacing: 5px; }
+        
+        .status { font-size: 70px; font-weight: bold; margin: 20px 0; padding: 20px; border-radius: 20px; }
         .status.in { color: #4CAF50; background-color: #E8F5E9; }
         .status.out { color: #FF9800; background-color: #FFF3E0; }
         
-        .time { font-size: 40px; color: #757575; }
-        .duration { font-size: 45px; color: #E91E63; margin-top: 30px; font-weight: bold; }
+        .time { font-size: 35px; color: #757575; }
+        .duration { font-size: 40px; color: #E91E63; margin-top: 25px; font-weight: bold; }
     </style>
 </head>
 <body>
@@ -44,6 +57,7 @@
         <div id="idle-msg">請將卡片靠近手機背面感應 📱</div>
 
         <div id="student-info">
+            <img id="s-photo" src="" alt="學生照片">
             <h1 id="s-name">姓名</h1>
             <div id="s-status" class="status">狀態</div>
             <div id="s-time" class="time">時間</div>
@@ -52,7 +66,7 @@
     </div>
 
     <script>
-        // 👇 請在這裡貼上你同一組的 firebaseConfig 👇
+        // 你專屬的 Firebase 設定檔
         const firebaseConfig = {
             apiKey: "AIzaSyAPFTAwM7yxBsUQ0NYcC7tMUBYna6em0XU",
             authDomain: "resource-room-a3986.firebaseapp.com",
@@ -62,21 +76,38 @@
             messagingSenderId: "76472526974",
             appId: "1:76472526974:web:7625a7719318206883d02f"
         };
-        // 👆 貼上結束 👆
 
-        // 初始化 Firebase
         firebase.initializeApp(firebaseConfig);
         const db = firebase.database();
 
-        // 監聽雲端資料庫
+        // 📸 照片對應表：將名字與圖片檔名綁定
+        const photoMap = {
+            "宇軒": "P1.jpg",
+            "睿穎": "P2.jpg",
+            "楷元": "P3.jpg",
+            "守恩": "P4.jpg",
+            "書愷": "P5.jpg",
+            "岷翰": "P6.jpg",
+            "承熙": "P7.jpg"
+        };
+
         db.ref('attendance').on('child_added', (snapshot) => {
             const data = snapshot.val();
             
-            // 隱藏等待文字，顯示學生資訊
+            // 隱藏預設文字，顯示卡片資訊
             document.getElementById('idle-msg').style.display = 'none';
             document.getElementById('student-info').style.display = 'block';
             
-            // 更新畫面內容
+            // 處理照片顯示邏輯
+            const photoEl = document.getElementById('s-photo');
+            if (photoMap[data.name]) {
+                photoEl.src = photoMap[data.name]; 
+                photoEl.style.display = 'block';   
+            } else {
+                photoEl.style.display = 'none';    
+            }
+
+            // 更新文字資訊
             document.getElementById('s-name').innerText = data.name;
             document.getElementById('s-time').innerText = "打卡時間：" + data.time;
             
