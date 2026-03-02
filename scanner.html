@@ -9,8 +9,7 @@
     <style>
         body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; text-align: center; padding: 50px 20px; background: #f4f7f6; margin: 0; display: flex; flex-direction: column; align-items: center; }
         h1 { color: #333; margin-bottom: 30px;}
-        #scan-btn { background: #4CAF50; color: white; border: none; padding: 20px 40px; font-size: 24px; border-radius: 50px; cursor: pointer; box-shadow: 0 4px 6px rgba(0,0,0,0.2); transition: background-color 0.3s;}
-        #scan-btn:active { background: #388E3C; transform: translateY(2px); }
+        #scan-btn { background: #4CAF50; color: white; border: none; padding: 20px 40px; font-size: 24px; border-radius: 50px; cursor: pointer; box-shadow: 0 4px 6px rgba(0,0,0,0.2); }
         #message { font-size: 24px; color: #4CAF50; font-weight: bold; margin-top: 30px; height: 35px;}
         .error-msg { color: #f44336 !important; }
     </style>
@@ -21,7 +20,7 @@
     <div id="message"></div>
 
     <script>
-        // 你專屬的 Firebase 設定
+        // 👇 請貼上你的 firebaseConfig 👇
         const firebaseConfig = {
             apiKey: "AIzaSyAPFTAwM7yxBsUQ0NYcC7tMUBYna6em0XU",
             authDomain: "resource-room-a3986.firebaseapp.com",
@@ -29,21 +28,22 @@
             projectId: "resource-room-a3986",
             storageBucket: "resource-room-a3986.firebasestorage.app",
             messagingSenderId: "76472526974",
-            appId: "1:76472526974:web:7625a7719318206883d02f",
-            measurementId: "G-CBJ8SD0DRQ"
+            appId: "1:76472526974:web:7625a7719318206883d02f"
         };
 
-        // 初始化 Firebase
         firebase.initializeApp(firebaseConfig);
         const db = firebase.database();
 
-        // 名單與狀態記憶
+        // 📝 【1. 在這裡更新學生的真實序號】
         const studentNames = {
-            "04:16:bc:fa:1d:70:80": "阿白",
-            "04:1a:bc:fa:1d:70:80": "土土",
-            "61:77:49:74": "宇軒",
+            "04:1a:bc:fa:1d:70:80": "阿白",
+            "04:2a:bc:fa:1d:70:80": "土土"
         };
+
+        // 📝 【2. 新增：用來記憶每個學生的上課時間】
         const studentStatus = {};
+        const checkInTimes = {}; 
+        
         let lastScanSerialNumber = "";
         let lastScanTime = 0;
 
@@ -92,23 +92,42 @@
                     const displayName = studentNames[serialNumber] || serialNumber;
 
                     let currentStatus = "上課";
+                    let durationText = ""; // 準備記錄時數
+
+                    // 判斷上下課與計算時間
                     if (studentStatus[serialNumber] === "上課") {
                         currentStatus = "下課";
                         studentStatus[serialNumber] = "下課"; 
+                        
+                        // 計算經過的時間
+                        if (checkInTimes[serialNumber]) {
+                            let diffMs = currentTime - checkInTimes[serialNumber];
+                            let diffMins = Math.floor(diffMs / 60000); // 算出幾分鐘
+                            let diffSecs = Math.floor((diffMs % 60000) / 1000); // 算出剩餘秒數
+                            
+                            if (diffMins > 0) {
+                                durationText = `${diffMins} 分 ${diffSecs} 秒`;
+                            } else {
+                                durationText = `${diffSecs} 秒`;
+                            }
+                        }
                     } else {
                         currentStatus = "上課";
                         studentStatus[serialNumber] = "上課"; 
+                        // 記下現在的上課時間戳記
+                        checkInTimes[serialNumber] = currentTime; 
                     }
 
                     msgDiv.innerText = `✅ 成功：${displayName} 已${currentStatus}`;
                     msgDiv.className = "";
                     setTimeout(() => { if(msgDiv.innerText.includes(displayName)) msgDiv.innerText = ""; }, 3000);
                     
-                    // 將資料上傳到雲端資料庫
+                    // 將資料與「時數」一起上傳到雲端
                     db.ref('attendance').push({
                         time: timeString,
                         name: displayName,
                         status: currentStatus,
+                        duration: durationText, // 新增時數欄位
                         timestamp: firebase.database.ServerValue.TIMESTAMP
                     });
 
