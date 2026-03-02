@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>學生打卡確認畫面</title>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
+    <style>
+        body { 
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
+            background-color: #FFF8E1; /* 溫暖柔和的背景色 */
+            margin: 0; 
+            height: 100vh; 
+            display: flex; 
+            justify-content: center; 
+            align-items: center; 
+            text-align: center; 
+        }
+        .card { 
+            background: white; 
+            padding: 60px; 
+            border-radius: 40px; 
+            box-shadow: 0 15px 35px rgba(0,0,0,0.1); 
+            width: 90%; 
+            max-width: 800px; 
+        }
+        #idle-msg { font-size: 60px; color: #9e9e9e; font-weight: bold; }
+        
+        #student-info { display: none; } /* 預設先隱藏，有資料才顯示 */
+        #s-name { font-size: 100px; color: #333; margin: 0 0 20px 0; letter-spacing: 5px; }
+        
+        .status { font-size: 80px; font-weight: bold; margin: 30px 0; padding: 20px; border-radius: 20px; }
+        .status.in { color: #4CAF50; background-color: #E8F5E9; }
+        .status.out { color: #FF9800; background-color: #FFF3E0; }
+        
+        .time { font-size: 40px; color: #757575; }
+        .duration { font-size: 45px; color: #E91E63; margin-top: 30px; font-weight: bold; }
+    </style>
+</head>
+<body>
+
+    <div class="card">
+        <div id="idle-msg">請將卡片靠近手機背面感應 📱</div>
+
+        <div id="student-info">
+            <h1 id="s-name">姓名</h1>
+            <div id="s-status" class="status">狀態</div>
+            <div id="s-time" class="time">時間</div>
+            <div id="s-duration" class="duration"></div>
+        </div>
+    </div>
+
+    <script>
+        // 👇 請在這裡貼上你同一組的 firebaseConfig 👇
+        const firebaseConfig = {
+            apiKey: "AIzaSyAPFTAwM7yxBsUQ0NYcC7tMUBYna6em0XU",
+            authDomain: "resource-room-a3986.firebaseapp.com",
+            databaseURL: "https://resource-room-a3986-default-rtdb.firebaseio.com",
+            projectId: "resource-room-a3986",
+            storageBucket: "resource-room-a3986.firebasestorage.app",
+            messagingSenderId: "76472526974",
+            appId: "1:76472526974:web:7625a7719318206883d02f"
+        };
+        // 👆 貼上結束 👆
+
+        // 初始化 Firebase
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.database();
+
+        // 監聽雲端資料庫
+        db.ref('attendance').on('child_added', (snapshot) => {
+            const data = snapshot.val();
+            
+            // 隱藏等待文字，顯示學生資訊
+            document.getElementById('idle-msg').style.display = 'none';
+            document.getElementById('student-info').style.display = 'block';
+            
+            // 更新畫面內容
+            document.getElementById('s-name').innerText = data.name;
+            document.getElementById('s-time').innerText = "打卡時間：" + data.time;
+            
+            const statusEl = document.getElementById('s-status');
+            statusEl.innerText = "已" + data.status + "！";
+            statusEl.className = "status " + (data.status === "上課" ? "in" : "out");
+            
+            const durationEl = document.getElementById('s-duration');
+            if (data.status === "下課" && data.duration) {
+                durationEl.innerText = "🌟 本次上課時數：\n" + data.duration;
+            } else {
+                durationEl.innerText = "";
+            }
+        });
+    </script>
+</body>
+</html>
