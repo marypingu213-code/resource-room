@@ -15,7 +15,7 @@
         
         /* 表格區塊加寬、字體放大 */
         .record-container { width: 100%; max-width: 95%; background: #fff; border-radius: 15px; box-shadow: 0 8px 16px rgba(0,0,0,0.1); padding: 40px; box-sizing: border-box; }
-        table { width: 100%; border-collapse: collapse; text-align: center; font-size: 36px; } /* 表格字體放大到36px */
+        table { width: 100%; border-collapse: collapse; text-align: center; font-size: 36px; } 
         th, td { padding: 20px; border-bottom: 2px solid #eee; }
         th { background-color: #4CAF50; color: white; }
         .status-in { color: #2196F3; font-weight: bold; }
@@ -45,7 +45,7 @@
     </div>
 
     <script>
-        // 👇 請貼上你的 firebaseConfig 👇
+        // 你專屬的 Firebase 設定檔
         const firebaseConfig = {
             apiKey: "AIzaSyAPFTAwM7yxBsUQ0NYcC7tMUBYna6em0XU",
             authDomain: "resource-room-a3986.firebaseapp.com",
@@ -55,18 +55,25 @@
             messagingSenderId: "76472526974",
             appId: "1:76472526974:web:7625a7719318206883d02f"
         };
-        // 👆 貼上結束 👆
 
+        // 初始化 Firebase
         firebase.initializeApp(firebaseConfig);
         const db = firebase.database();
 
         const tbody = document.getElementById('recordBody');
         const latestScanDiv = document.getElementById('latest-scan');
 
-        db.ref('attendance').on('child_added', (snapshot) => {
+        // 🌟 取得今天凌晨 00:00:00 的時間戳記
+        const now = new Date();
+        const startOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
+
+        // 🌟 告訴 Firebase 依照時間戳記排序，而且「只抓今天凌晨之後」的資料
+        db.ref('attendance').orderByChild('timestamp').startAt(startOfDay).on('child_added', (snapshot) => {
             const data = snapshot.val();
             
-            // 判斷是否有時數資料
+            // 防呆機制：如果遇到舊版測試資料沒有 timestamp，就跳過不顯示
+            if (!data.timestamp) return;
+            
             let durationHtml = `<span style="color: #ccc;">-</span>`;
             let latestText = `👋 ${data.name} 已${data.status}！`;
 
