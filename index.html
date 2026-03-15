@@ -10,7 +10,7 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- Firebase SDKs -->
     <script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-app-compat.js"></script>
-    <script src="https://www.gs會tatic.com/firebasejs/10.13.0/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore-compat.js"></script>
     
     <style>
@@ -314,7 +314,6 @@
 
             const imgElement = (
                 <img 
-                    /* 💡 修正：圖片路徑改為 images/ 資料夾 */
                     src={`images/${baseName}${exts[extIndex]}`}
                     className={className}
                     alt={baseName}
@@ -403,7 +402,6 @@
 
             const [showBook, setShowBook] = useState(false);
             const [bookPage, setBookPage] = useState(1);
-            /* 💡 修正：繪本總頁數改為 14 頁 */
             const TOTAL_PAGES = 14; 
 
             const [playerPosition, setPlayerPosition] = useState(0);
@@ -411,7 +409,7 @@
             const [isRolling, setIsRolling] = useState(false);
             const [activeCard, setActiveCard] = useState(null);
 
-            // 💡 調整：移除五個前情提要頁面後，總頁數降為 11 頁
+            // 總共 11 頁 (拔掉前情提要)
             const totalSlides = 11; 
 
             useEffect(() => {
@@ -613,7 +611,6 @@
 
             const BookReader = () => {
                 if (!showBook) return null;
-                /* 💡 修正：檔名格式變更為 P1, P2... P14 */
                 const baseName = `P${bookPage}`;
 
                 return (
@@ -628,7 +625,6 @@
                                 zoomable={true}
                                 fallback={
                                     <div className="text-white text-2xl p-16 border-2 border-white text-center bg-black/60 rounded-xl">
-                                        {/* 💡 修正：錯誤訊息提示路徑 */}
                                         圖片讀取失敗<br/>請確認檔案位置: images/{baseName}.jpg<br/>
                                     </div>
                                 }
@@ -663,7 +659,6 @@
                     if (!currentStudent) return <div>載入中...</div>;
                     const isSubmitted = currentStudent.submitted;
 
-                    // 💡 新增：集中管理隱藏任務對應表
                     const SECRET_MISSIONS = {
                         '書愷': '上課拿出課本',
                         '宇軒': '聽老師的話',
@@ -683,7 +678,6 @@
                                 <button onClick={() => setSelectedStudentId(null)} className="bg-gray-200 text-gray-700 px-6 py-2 rounded-full font-bold text-2xl shadow-md">返回</button>
                             </div>
                             
-                            {/* 💡 新增：學生個人專屬的隱藏任務提示橫幅 */}
                             {secretTask && (
                                 <div className="w-full max-w-4xl px-4 mb-6">
                                     <div className="bg-gradient-to-r from-purple-100 to-indigo-100 border-l-[12px] border-purple-500 p-6 rounded-3xl shadow-md flex items-center">
@@ -809,11 +803,11 @@
                                 >
                                     <div className="relative">
                                         <SmartImage 
-                                            baseName="1-1 (1)"
+                                            baseName="P1"
                                             className="w-[18rem] h-[24rem] object-cover rounded-2xl mb-2 shadow-inner bg-gray-100"
                                             fallback={
                                                 <div className="w-[18rem] h-[24rem] bg-gray-200 flex flex-col items-center justify-center rounded-2xl mb-2 text-gray-400 text-center p-4">
-                                                    <div className="text-center"><div className="text-5xl mb-2">📚</div><div className="text-lg font-bold">圖片讀取失敗<br/>1-1 (1)</div></div>
+                                                    <div className="text-center"><div className="text-5xl mb-2">📚</div><div className="text-lg font-bold">圖片讀取失敗<br/>images/P1.jpg</div></div>
                                                 </div>
                                             }
                                         />
@@ -882,60 +876,60 @@
                         </div>
                     );
                     case 7: return ( 
-                        <div className="content-area bg-orange-50 relative">
-                            <div className="bg-white p-12 rounded-3xl shadow-2xl border-[8px] border-orange-300 max-w-4xl w-full text-center relative mt-8">
-                                <span className="absolute -top-16 -left-10 text-[7rem] transform -rotate-12">🧐</span>
-                                <h2 className="text-5xl font-black text-gray-800 mb-10 leading-normal">
-                                    前情提要五：<br/>
-                                    <span className="text-orange-600 text-6xl drop-shadow-md">為什麼浣熊要去找他的東西？</span>
-                                </h2>
-                                <div className="bg-orange-100 p-8 rounded-2xl border-4 border-orange-300 min-h-[160px] flex flex-col items-center justify-center">
-                                    {isRolling5 ? (
-                                        <div className="text-6xl font-black text-gray-400 animate-pulse">{rollingName5}</div>
-                                    ) : pickedStudent5 ? (
-                                        <div className="text-6xl font-black text-orange-700 animate-bounce-slow">🎉 {pickedStudent5} 🎉</div>
-                                    ) : (
-                                        <button onClick={pickRandom5} className="bg-orange-600 hover:bg-orange-700 text-white px-10 py-5 rounded-full font-black text-3xl shadow-lg active:scale-95 transition-transform flex items-center gap-3">
-                                            <span>🎲</span> 今天的幸運兒是誰呢?
-                                        </button>
-                                    )}
+                        <div className="content-area bg-cyan-50">
+                            <h2 className="text-5xl font-bold text-cyan-800 mb-6">這是誰的發言時間？</h2>
+                            <div className="flex-1 flex flex-col justify-center items-center w-full">
+                                <div className="bg-gradient-to-br from-gray-700 to-gray-900 p-6 rounded-full shadow-2xl mb-6 border-8 border-gray-300 transform hover:scale-110 transition-transform duration-500"><span className="text-[6rem] text-white">🎤</span></div>
+                                <div className="bg-white p-6 rounded-3xl shadow-xl border-l-[16px] border-cyan-500 max-w-3xl w-full">
+                                    <div className="grid grid-cols-2 gap-6 text-center">
+                                        <div className="p-4 bg-green-50 rounded-2xl"><p className="text-xl text-gray-500 mb-2">有拿 <span className="text-cyan-600 font-bold">麥克風</span></p><p className="text-3xl font-black text-green-600">= 綠燈 🟢</p></div>
+                                        <div className="p-4 bg-red-50 rounded-2xl"><p className="text-xl text-gray-500 mb-2">沒有拿的人</p><p className="text-3xl font-black text-red-600">= 紅燈 🔴</p></div>
+                                    </div>
                                 </div>
+                                <p className="mt-6 text-2xl text-gray-600 font-bold bg-white/80 px-6 py-2 rounded-full border-4 border-cyan-200 shadow-lg">如果你想拿麥克風，要先做什麼？</p>
                             </div>
                         </div>
                     );
                     case 8: return ( 
-                        <div className="content-area bg-indigo-50">
-                            <h2 className="text-5xl font-bold text-indigo-900 mb-4">現在是什麼燈？</h2>
-                            <div className="flex items-center justify-center gap-8 w-full flex-1">
-                                <div 
-                                    className="bg-white p-4 rounded-3xl shadow-xl border-4 border-indigo-200 transform -rotate-2 cursor-pointer hover:scale-105 transition-transform"
-                                    onClick={() => { setBookPage(1); setShowBook(true); }}
-                                    title="點擊閱讀繪本"
-                                >
-                                    <div className="relative">
-                                        <SmartImage 
-                                            /* 💡 修正：第一頁的封面也一併更新為 P1 */
-                                            baseName="P1"
-                                            className="w-[18rem] h-[24rem] object-cover rounded-2xl mb-2 shadow-inner bg-gray-100"
-                                            fallback={
-                                                <div className="w-[18rem] h-[24rem] bg-gray-200 flex flex-col items-center justify-center rounded-2xl mb-2 text-gray-400 text-center p-4">
-                                                    <div className="text-center"><div className="text-5xl mb-2">📚</div><div className="text-lg font-bold">圖片讀取失敗<br/>images/P1.jpg</div></div>
-                                                </div>
-                                            }
-                                        />
-                                        
-                                        <div className="absolute bottom-2 right-2 bg-yellow-400 text-white rounded-full p-2 shadow-lg animate-bounce">
-                                            <span className="text-2xl">👆</span>
+                        <div className="content-area bg-green-50">
+                            <h2 className="text-5xl font-bold text-green-800 mb-6">說話遊戲大富翁</h2>
+                            
+                            <div className="w-full max-w-[1200px] h-[650px] grid gap-4 p-6 bg-green-100 rounded-[2rem] border-[10px] border-green-300 shadow-2xl relative"
+                                 style={{ gridTemplateColumns: 'repeat(4, 1fr)', gridTemplateRows: 'repeat(4, 1fr)' }}>
+                                
+                                {boardCells.map(cell => {
+                                    const area = getGridArea(cell.id);
+                                    const isPlayerHere = playerPosition === cell.id;
+                                    let cellColor = 'bg-white border-gray-300';
+                                    if(cell.type==='chance') cellColor = 'bg-orange-50 border-orange-300';
+                                    if(cell.type==='destiny') cellColor = 'bg-purple-50 border-purple-300';
+                                    if(cell.type==='start') cellColor = 'bg-blue-100 border-blue-400';
+                                    if(cell.type==='reward') cellColor = 'bg-pink-50 border-pink-300'; 
+
+                                    return (
+                                        <div key={cell.id} style={{...area}} className={`border-4 rounded-2xl flex flex-col items-center justify-center p-2 relative shadow-sm transition-all duration-300 ${cellColor} ${isPlayerHere ? 'ring-4 ring-pink-400 scale-105 z-10' : ''}`}>
+                                            <span className="text-5xl">{cell.icon}</span>
+                                            <span className="text-xl font-bold text-gray-700 mt-2 text-center leading-tight">{cell.text}</span>
+                                            {isPlayerHere && <div className="absolute -top-8 -right-8 text-[4.5rem] animate-bounce drop-shadow-lg z-20">🦝</div>}
                                         </div>
-                                    </div>
-                                    <p className="text-2xl text-center font-bold text-gray-700">老師在講故事</p>
-                                </div>
-                                <div className="text-6xl font-bold text-indigo-300 animate-pulse">➡️</div>
+                                    )
+                                })}
+
+                                <div className="flex flex-col items-center justify-center bg-white/90 rounded-2xl shadow-inner border-4 border-dashed border-green-300 relative overflow-hidden" style={{ gridColumn: '2 / 4', gridRow: '2 / 4' }}>
+                                    
+                                    {activeCard ? (
+                                        <div className="absolute inset-0 bg-white flex flex-col items-center justify-center p-6 text-center popup-card-animation z-30">
+                                            <h3 className={`text-5xl font-black mb-4 ${activeCard.type === '機會' ? 'text-orange-500' : activeCard.type === '命運' ? 'text-purple-600' : activeCard.type === '獎賞' ? 'text-pink-600' : 'text-blue-600'}`}>{activeCard.type}卡</h3>
+                                            <p className="text-3xl font-bold text-gray-700 leading-snug px-4">{activeCard.text}</p>
+                                            <button onClick={() => setActiveCard(null)} className="mt-8 bg-gray-200 hover:bg-gray-300 text-gray-800 px-8 py-3 rounded-2xl text-2xl font-bold shadow transition-colors">確認</button>
+                                        </div>
+                                    ) : (
+                                        <div className="flex flex-col items-center">
                                             <div className={`text-[8rem] mb-4 font-black text-blue-600 drop-shadow-md transition-transform ${isRolling ? 'animate-spin' : ''}`}>
                                                 {isRolling ? "🎲" : diceNumber}
                                             </div>
                                             <button onClick={rollDice} disabled={isRolling} className="bg-blue-500 hover:bg-blue-600 text-white px-8 py-4 rounded-full font-black text-3xl shadow-lg active:scale-95 transition-transform disabled:opacity-50 flex items-center gap-2">
-                                                <span>🎲</span> {isRolling ? '掷骰子中...' : '擲骰子'}
+                                                <span>🎲</span> {isRolling ? '擲骰子中...' : '擲骰子'}
                                             </button>
                                         </div>
                                     )}
@@ -1000,21 +994,16 @@
                                         const icon2 = evalItems[1].icon;
                                         const icon3 = evalItems[2].icon;
                                         
-                                        // 💡 修改：老師端計分板，為這七位同學都掛上他們的專屬任務徽章
                                         const secretMissions = {
                                             '書愷': '上課拿出課本',
                                             '宇軒': '聽老師的話',
                                             '楷元': '聯絡簿給老師簽名',
-                                            '睿穎': '不可以摸同學',
-                                            '瑀安': '上課要專心',
-                                            '岷翰': '遵守上課規則',
-                                            '守恩': '遵守上課規則'
+                                            '睿穎': '不可以摸同學'
                                         };
                                         const secretTask = secretMissions[student.name];
                                         
                                         return (
                                             <div key={student.id} className="flip-card h-48 relative">
-                                                {/* 隱藏任務標籤：顯示具體文字提醒 */}
                                                 {secretTask && (
                                                     <div className="absolute -top-4 -right-4 bg-gradient-to-r from-purple-600 to-indigo-600 text-white text-sm font-black px-3 py-1.5 rounded-full shadow-xl transform rotate-3 border-[2px] border-white z-20 whitespace-nowrap">
                                                         ㊙️ {secretTask}
@@ -1095,7 +1084,6 @@
                             <>
                                 <div className="absolute bottom-4 left-4 flex items-center gap-4 z-[10000]">
                                     <Clock />
-                                    {/* 💡 修正大富翁捷徑索引，現在為第 9 頁 (索引 8) */}
                                     {currentSlide !== 8 ? (
                                         <button 
                                             onClick={() => { setSavedSlide(currentSlide); setCurrentSlide(8); }} 
@@ -1121,7 +1109,6 @@
                                 <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 bg-black/10 px-4 py-1 rounded-full text-gray-600 font-bold text-xl backdrop-blur-sm z-[10000]">{currentSlide + 1} / {totalSlides}</div>
                             </>
                         )}
-                        {/* 💡 修正平板預覽按鈕索引，現在為第 10 頁 (索引 9) */}
                         {!isTabletMode && currentSlide === 9 && isLocalFile && (
                             <button onClick={() => {
                                 const studentUrl = window.location.origin + window.location.pathname + '?mode=student';
