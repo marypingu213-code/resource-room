@@ -3,24 +3,40 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>📱 手機掃描端</title>
+    <title>📱 手機掃描與給分端</title>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
     <style>
-        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; text-align: center; padding: 50px 20px; background: #f4f7f6; margin: 0; display: flex; flex-direction: column; align-items: center; }
-        h1 { color: #333; margin-bottom: 30px;}
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; text-align: center; padding: 30px 20px; background: #f4f7f6; margin: 0; display: flex; flex-direction: column; align-items: center; }
+        h1 { color: #333; margin-bottom: 20px;}
         #scan-btn { background: #4CAF50; color: white; border: none; padding: 20px 40px; font-size: 24px; border-radius: 50px; cursor: pointer; box-shadow: 0 4px 6px rgba(0,0,0,0.2); }
-        #message { font-size: 24px; color: #4CAF50; font-weight: bold; margin-top: 30px; height: 35px;}
+        #message { font-size: 24px; color: #4CAF50; font-weight: bold; margin-top: 20px; height: 35px;}
         .error-msg { color: #f44336 !important; }
+        
+        /* 給分面板樣式 */
+        #active-students-container { margin-top: 30px; width: 100%; max-width: 500px; background: white; border-radius: 15px; padding: 20px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); }
+        .student-row { display: flex; justify-content: space-between; align-items: center; padding: 15px 0; border-bottom: 1px solid #eee; }
+        .student-row:last-child { border-bottom: none; }
+        .s-name { font-size: 22px; font-weight: bold; color: #333; width: 80px; text-align: left; }
+        .s-points { font-size: 24px; font-weight: bold; color: #E91E63; width: 60px; }
+        .btn-group button { padding: 10px 15px; font-size: 18px; border: none; border-radius: 8px; margin-left: 5px; cursor: pointer; color: white; font-weight: bold; }
+        .btn-minus { background: #9E9E9E; }
+        .btn-plus1 { background: #4CAF50; }
+        .btn-plus5 { background: #2196F3; }
     </style>
 </head>
 <body>
-    <h1>📱 NFC 掃描器</h1>
+    <h1>📱 NFC 掃描與給分</h1>
     <button id="scan-btn">👉 點擊開始感應 NFC</button>
     <div id="message"></div>
 
+    <!-- 上課中學生給分面板 -->
+    <div id="active-students-container" style="display: none;">
+        <h3 style="margin-top: 0; color: #555;">🏫 上課中學生 (點擊加分)</h3>
+        <div id="active-list"></div>
+    </div>
+
     <script>
-        // 👇 請貼上你的 firebaseConfig 👇
         const firebaseConfig = {
             apiKey: "AIzaSyAPFTAwM7yxBsUQ0NYcC7tMUBYna6em0XU",
             authDomain: "resource-room-a3986.firebaseapp.com",
@@ -30,11 +46,10 @@
             messagingSenderId: "76472526974",
             appId: "1:76472526974:web:7625a7719318206883d02f"
         };
-
         firebase.initializeApp(firebaseConfig);
         const db = firebase.database();
 
-        // 📝 【1. 在這裡更新學生的真實序號】
+        // 學生序號名單
         const studentNames = {
             "04:1a:bc:fa:1d:70:80": "宇軒",
             "04:16:bc:fa:1d:70:80": "睿穎",
@@ -52,9 +67,9 @@
             "ff:0f:33:96:48:01:00": "齊安"
         };
 
-        // 📝 【2. 新增：用來記憶每個學生的上課時間】
         const studentStatus = {};
         const checkInTimes = {}; 
+        const classPoints = {}; // 🌟 新增：用來記錄每個人這堂課的額外加分
         
         let lastScanSerialNumber = "";
         let lastScanTime = 0;
@@ -63,14 +78,48 @@
             const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
             const osc = audioCtx.createOscillator();
             const gainNode = audioCtx.createGain();
-            osc.type = 'sine';
-            osc.frequency.value = 1500; 
+            osc.type = 'sine'; osc.frequency.value = 1500; 
             gainNode.gain.setValueAtTime(1, audioCtx.currentTime);
             gainNode.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.1);
-            osc.connect(gainNode);
-            gainNode.connect(audioCtx.destination);
-            osc.start();
-            osc.stop(audioCtx.currentTime + 0.1);
+            osc.connect(gainNode); gainNode.connect(audioCtx.destination);
+            osc.start(); osc.stop(audioCtx.currentTime + 0.1);
+        }
+
+        // 🌟 更新給分面板的畫面
+        function updateActiveList() {
+            const listDiv = document.getElementById('active-list');
+            const container = document.getElementById('active-students-container');
+            listDiv.innerHTML = '';
+            let hasActive = false;
+
+            for (let sn in studentStatus) {
+                if (studentStatus[sn] === "上課") {
+                    hasActive = true;
+                    const name = studentNames[sn] || sn;
+                    const pts = classPoints[sn] || 0;
+                    
+                    const row = document.createElement('div');
+                    row.className = 'student-row';
+                    row.innerHTML = `
+                        <div class="s-name">${name}</div>
+                        <div class="s-points">${pts} 分</div>
+                        <div class="btn-group">
+                            <button class="btn-minus" onclick="addPoint('${sn}', -1)">-1</button>
+                            <button class="btn-plus1" onclick="addPoint('${sn}', 1)">+1</button>
+                            <button class="btn-plus5" onclick="addPoint('${sn}', 5)">+5</button>
+                        </div>
+                    `;
+                    listDiv.appendChild(row);
+                }
+            }
+            container.style.display = hasActive ? 'block' : 'none';
+        }
+
+        // 🌟 處理點擊加分按鈕
+        window.addPoint = function(sn, pts) {
+            classPoints[sn] = (classPoints[sn] || 0) + pts;
+            if (classPoints[sn] < 0) classPoints[sn] = 0; // 分數不低於0
+            updateActiveList();
         }
 
         const scanBtn = document.getElementById('scan-btn');
@@ -79,8 +128,7 @@
         scanBtn.addEventListener('click', async () => {
             if (!("NDEFReader" in window)) {
                 msgDiv.innerText = "❌ 你的設備不支援 NFC";
-                msgDiv.className = "error-msg";
-                return;
+                msgDiv.className = "error-msg"; return;
             }
             try {
                 const ndef = new NDEFReader();
@@ -92,61 +140,65 @@
                     const currentTime = new Date().getTime();
                     if (serialNumber === lastScanSerialNumber && (currentTime - lastScanTime) < 3000) return;
 
-                    lastScanSerialNumber = serialNumber;
-                    lastScanTime = currentTime;
-                    playBeep();
-
+                    lastScanSerialNumber = serialNumber; lastScanTime = currentTime; playBeep();
                     const now = new Date();
-                    const timeString = now.getHours().toString().padStart(2, '0') + ':' + 
-                                       now.getMinutes().toString().padStart(2, '0') + ':' + 
-                                       now.getSeconds().toString().padStart(2, '0');
-
+                    const timeString = now.getHours().toString().padStart(2, '0') + ':' + now.getMinutes().toString().padStart(2, '0') + ':' + now.getSeconds().toString().padStart(2, '0');
                     const displayName = studentNames[serialNumber] || serialNumber;
 
                     let currentStatus = "上課";
-                    let durationText = ""; // 準備記錄時數
+                    let durationText = ""; 
+                    let durationPoints = 0;
+                    let extraPoints = 0;
+                    let totalPoints = 0;
 
-                    // 判斷上下課與計算時間
                     if (studentStatus[serialNumber] === "上課") {
                         currentStatus = "下課";
                         studentStatus[serialNumber] = "下課"; 
                         
-                        // 計算經過的時間
+                        // 計算經過的時間與分數
                         if (checkInTimes[serialNumber]) {
                             let diffMs = currentTime - checkInTimes[serialNumber];
-                            let diffMins = Math.floor(diffMs / 60000); // 算出幾分鐘
-                            let diffSecs = Math.floor((diffMs % 60000) / 1000); // 算出剩餘秒數
+                            let diffMins = Math.floor(diffMs / 60000); 
+                            let diffSecs = Math.floor((diffMs % 60000) / 1000); 
                             
-                            if (diffMins > 0) {
-                                durationText = `${diffMins} 分 ${diffSecs} 秒`;
-                            } else {
-                                durationText = `${diffSecs} 秒`;
-                            }
+                            durationText = diffMins > 0 ? `${diffMins} 分 ${diffSecs} 秒` : `${diffSecs} 秒`;
+                            
+                            // 🌟 分數計算核心：時數 * 0.2 四捨五入
+                            durationPoints = Math.round(diffMins * 0.2); 
+                            extraPoints = classPoints[serialNumber] || 0; // 取得老師給的課堂加分
+                            totalPoints = durationPoints + extraPoints;   // 總分
                         }
+                        
+                        // 下課後清空該學生的暫存分數
+                        classPoints[serialNumber] = 0;
+
                     } else {
                         currentStatus = "上課";
                         studentStatus[serialNumber] = "上課"; 
-                        // 記下現在的上課時間戳記
                         checkInTimes[serialNumber] = currentTime; 
+                        classPoints[serialNumber] = 0; // 上課時初始化分數為 0
                     }
+
+                    updateActiveList(); // 重新繪製給分面板
 
                     msgDiv.innerText = `✅ 成功：${displayName} 已${currentStatus}`;
                     msgDiv.className = "";
                     setTimeout(() => { if(msgDiv.innerText.includes(displayName)) msgDiv.innerText = ""; }, 3000);
                     
-                    // 將資料與「時數」一起上傳到雲端
+                    // 將資料與所有分數上傳到雲端
                     db.ref('attendance').push({
                         time: timeString,
                         name: displayName,
                         status: currentStatus,
-                        duration: durationText, // 新增時數欄位
+                        duration: durationText,
+                        durationPoints: durationPoints, // 上課時數得分
+                        extraPoints: extraPoints,       // 課堂表現加分
+                        totalPoints: totalPoints,       // 總計得分
                         timestamp: firebase.database.ServerValue.TIMESTAMP
                     });
-
                 });
             } catch (error) {
-                msgDiv.innerText = `❌ 錯誤：${error.message}`;
-                msgDiv.className = "error-msg";
+                msgDiv.innerText = `❌ 錯誤：${error.message}`; msgDiv.className = "error-msg";
             }
         });
     </script>
