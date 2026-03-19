@@ -8,25 +8,21 @@
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
     <style>
         body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #f4f7f6; margin: 0; padding: 20px; display: flex; flex-direction: column; align-items: center; }
-        
-        /* 標題與最新動態放大 */
         h1 { font-size: 60px; color: #333; margin-bottom: 10px; }
         #latest-scan { font-size: 80px; color: #4CAF50; font-weight: bold; height: 110px; margin-bottom: 30px; text-shadow: 2px 2px 4px rgba(0,0,0,0.1); }
-        
-        /* 表格區塊加寬、字體放大 */
         .record-container { width: 100%; max-width: 95%; background: #fff; border-radius: 15px; box-shadow: 0 8px 16px rgba(0,0,0,0.1); padding: 40px; box-sizing: border-box; }
-        table { width: 100%; border-collapse: collapse; text-align: center; font-size: 36px; } 
-        th, td { padding: 20px; border-bottom: 2px solid #eee; }
+        table { width: 100%; border-collapse: collapse; text-align: center; font-size: 32px; } 
+        th, td { padding: 15px; border-bottom: 2px solid #eee; }
         th { background-color: #4CAF50; color: white; }
         .status-in { color: #2196F3; font-weight: bold; }
         .status-out { color: #FF9800; font-weight: bold; }
-        .duration-text { color: #E91E63; font-weight: bold; font-size: 32px; }
+        .duration-text { color: #757575; font-size: 28px; }
+        .points-text { color: #E91E63; font-weight: bold; font-size: 36px; }
     </style>
 </head>
 <body>
 
     <h1>📝 資源班今日出缺席動態</h1>
-    
     <div id="latest-scan">等待感應中...</div>
 
     <div class="record-container">
@@ -37,49 +33,36 @@
                     <th>學生姓名</th>
                     <th>狀態</th>
                     <th>本次時數</th>
+                    <th>獲得積分</th> <!-- 🌟 新增得分欄位 -->
                 </tr>
             </thead>
-            <tbody id="recordBody">
-                </tbody>
+            <tbody id="recordBody"></tbody>
         </table>
     </div>
 
     <script>
-        // 你專屬的 Firebase 設定檔
-        const firebaseConfig = {
-            apiKey: "AIzaSyAPFTAwM7yxBsUQ0NYcC7tMUBYna6em0XU",
-            authDomain: "resource-room-a3986.firebaseapp.com",
-            databaseURL: "https://resource-room-a3986-default-rtdb.firebaseio.com",
-            projectId: "resource-room-a3986",
-            storageBucket: "resource-room-a3986.firebasestorage.app",
-            messagingSenderId: "76472526974",
-            appId: "1:76472526974:web:7625a7719318206883d02f"
-        };
-
-        // 初始化 Firebase
-        firebase.initializeApp(firebaseConfig);
-        const db = firebase.database();
+        const firebaseConfig = { apiKey: "AIzaSyAPFTAwM7yxBsUQ0NYcC7tMUBYna6em0XU", authDomain: "resource-room-a3986.firebaseapp.com", databaseURL: "https://resource-room-a3986-default-rtdb.firebaseio.com", projectId: "resource-room-a3986", storageBucket: "resource-room-a3986.firebasestorage.app", messagingSenderId: "76472526974", appId: "1:76472526974:web:7625a7719318206883d02f" };
+        firebase.initializeApp(firebaseConfig); const db = firebase.database();
 
         const tbody = document.getElementById('recordBody');
         const latestScanDiv = document.getElementById('latest-scan');
 
-        // 🌟 取得今天凌晨 00:00:00 的時間戳記
         const now = new Date();
         const startOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
 
-        // 🌟 告訴 Firebase 依照時間戳記排序，而且「只抓今天凌晨之後」的資料
         db.ref('attendance').orderByChild('timestamp').startAt(startOfDay).on('child_added', (snapshot) => {
             const data = snapshot.val();
-            
-            // 防呆機制：如果遇到舊版測試資料沒有 timestamp，就跳過不顯示
             if (!data.timestamp) return;
             
             let durationHtml = `<span style="color: #ccc;">-</span>`;
+            let pointsHtml = `<span style="color: #ccc;">-</span>`;
             let latestText = `👋 ${data.name} 已${data.status}！`;
 
             if (data.status === "下課" && data.duration) {
                 durationHtml = `<span class="duration-text">${data.duration}</span>`;
-                latestText = `👋 ${data.name} 已下課！(共 ${data.duration})`;
+                // 🌟 顯示獲得的總分
+                pointsHtml = `<span class="points-text">🏆 ${data.totalPoints || 0} 分</span>`;
+                latestText = `👋 ${data.name} 已下課！(得 ${data.totalPoints || 0} 分)`;
             }
             
             latestScanDiv.innerText = latestText;
@@ -93,6 +76,7 @@
                 <td>${data.name}</td>
                 <td class="${statusClass}">${data.status}</td>
                 <td>${durationHtml}</td>
+                <td>${pointsHtml}</td>
             `;
             tbody.insertBefore(row, tbody.firstChild);
         });
