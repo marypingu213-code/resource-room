@@ -3,11 +3,10 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>學生打卡確認畫面 - 鎖定畫面今日版</title>
+    <title>學生打卡確認畫面 - 語音判定版</title>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
     <style>
-        /* 🌟 強制鎖定整個網頁，不允許任何滑動 */
         html, body { 
             margin: 0; 
             padding: 0;
@@ -23,7 +22,6 @@
             touch-action: none; 
         }
         
-        /* 🔊 語音解鎖畫面 */
         #audio-unlock {
             position: fixed;
             top: 0; left: 0; width: 100vw; height: 100vh;
@@ -39,7 +37,6 @@
         #audio-unlock h2 { font-size: 6vmin; margin-bottom: 2vh; }
         #audio-unlock p { font-size: 4vmin; color: #FFEB3B; }
 
-        /* 卡片主體 */
         .card { 
             background: white; 
             width: 95vw; 
@@ -151,21 +148,17 @@
             "齊安": "images/P14.jpg"
         };
 
-        // 🌟 取得今天凌晨 00:00:00 的時間戳記
         const now = new Date();
         const startOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
 
         let isInitialLoad = true;
-        // 🌟 防吵機制也加上今天凌晨的過濾，確保重新整理時不會唸出早上已經刷過的聲音
         db.ref('attendance').orderByChild('timestamp').startAt(startOfDay).once('value').then(() => {
             isInitialLoad = false; 
         });
 
-        // 🌟 只監聽「今天凌晨以後」新增的打卡資料
         db.ref('attendance').orderByChild('timestamp').startAt(startOfDay).on('child_added', (snapshot) => {
             const data = snapshot.val();
             
-            // 防呆機制：過濾沒有時間戳記的舊資料
             if (!data.timestamp) return;
             
             document.getElementById('idle-msg').style.display = 'none';
@@ -193,8 +186,31 @@
                 durationEl.innerText = "";
             }
 
+            // 🔊 語音播報機制
             if (!isInitialLoad && 'speechSynthesis' in window) {
-                let textToSpeak = data.name + "，" + data.status;
+                let textToSpeak = data.name + "，" + data.status; // 預設台詞
+                
+                // 🌟 新增：星期二、四的遲到與準時判定
+                if (data.status === "上課") {
+                    const currentDay = new Date().getDay(); // 取得星期幾 (0是週日，1-6是週一到週六)
+                    
+                    if (currentDay === 2 || currentDay === 4) { // 2為星期二，4為星期四
+                        // 將時間字串 "08:05:30" 拆分成小時與分鐘
+                        let timeParts = data.time.split(':');
+                        let hour = parseInt(timeParts[0], 10);
+                        let minute = parseInt(timeParts[1], 10);
+
+                        if (hour > 8 || (hour === 8 && minute >= 5)) {
+                            // 8:05 (含) 以後
+                            textToSpeak = data.name + "，你遲到囉";
+                        } else if (hour < 8 || (hour === 8 && minute === 0)) {
+                            // 8:00 (含) 以前
+                            textToSpeak = data.name + "，很棒，你準時到達了！";
+                        }
+                        // 註：若在 8:01 ~ 8:04 之間，則會維持預設的 "名字，上課"
+                    }
+                }
+
                 let speech = new SpeechSynthesisUtterance(textToSpeak);
                 speech.lang = 'zh-TW'; 
                 speech.rate = 1.0;     
