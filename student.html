@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>學生打卡確認畫面 - 獎勵升級版</title>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
+    <style>
+        html, body { margin: 0; padding: 0; width: 100vw; height: 100vh; background-color: #FFF8E1; overflow: hidden; display: flex; justify-content: center; align-items: center; text-align: center; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; touch-action: none; }
+        
+        #audio-unlock { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background-color: rgba(0, 0, 0, 0.85); color: white; display: flex; flex-direction: column; justify-content: center; align-items: center; z-index: 9999; cursor: pointer; }
+        #audio-unlock h2 { font-size: 6vmin; margin-bottom: 2vh; }
+        #audio-unlock p { font-size: 4vmin; color: #FFEB3B; }
+
+        .card { background: white; width: 95vw; height: 95vh; max-height: 95vh; border-radius: 40px; box-shadow: 0 10px 30px rgba(0,0,0,0.15); display: flex; flex-direction: column; justify-content: center; align-items: center; box-sizing: border-box; padding: 2vh 2vw; }
+        #idle-msg { font-size: 8vmin; color: #9e9e9e; font-weight: bold; }
+        #student-info { display: none; flex-direction: column; justify-content: space-evenly; align-items: center; height: 100%; width: 100%; }
+        
+        #s-photo { height: 25vmin; width: 25vmin; max-height: 200px; max-width: 200px; object-fit: cover; border-radius: 50%; border: 8px solid #FFF8E1; box-shadow: 0 8px 16px rgba(0,0,0,0.15); display: none; margin: 0; }
+        #s-name { font-size: 8vmin; color: #333; margin: 0; letter-spacing: 5px; }
+        
+        .status { font-size: 6vmin; font-weight: bold; margin: 0; padding: 1.5vh 4vw; border-radius: 30px; }
+        .status.in { color: #4CAF50; background-color: #E8F5E9; }
+        .status.out { color: #FF9800; background-color: #FFF3E0; }
+        
+        .time { font-size: 4.5vmin; color: #757575; margin: 0; }
+        
+        /* 🌟 分數展示區塊樣式 */
+        .points-board { background: #FFF3E0; padding: 2vh 4vw; border-radius: 20px; text-align: left; display: inline-block; margin-top: 1vh; border: 3px dashed #FFB74D; display: none; }
+        .points-board div { font-size: 4.5vmin; color: #5D4037; margin: 1vh 0; font-weight: bold; }
+        .points-board .total { font-size: 6.5vmin; color: #E91E63; border-top: 2px solid #FFCC80; padding-top: 1vh; margin-top: 1vh; text-align: center; }
+    </style>
+</head>
+<body>
+    <div id="audio-unlock">
+        <h2>👉 請點擊螢幕任意處 👈</h2><p>啟動語音播報功能 🔊</p>
+    </div>
+    <div class="card">
+        <div id="idle-msg">請將卡片靠近手機背面感應 📱</div>
+        <div id="student-info">
+            <img id="s-photo" src="" alt="學生照片">
+            <h1 id="s-name">姓名</h1>
+            <div id="s-status" class="status">狀態</div>
+            <div id="s-time" class="time">時間</div>
+            
+            <!-- 🌟 分數看板 -->
+            <div id="s-points-board" class="points-board">
+                <div id="p-duration">⏱ 上課時數：-- 分鐘 (獲得 0 分)</div>
+                <div id="p-extra">🎁 課堂表現加分：0 分</div>
+                <div id="p-total" class="total">🏆 本次總計獲得：0 分！</div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        document.getElementById('audio-unlock').addEventListener('click', function() {
+            this.style.display = 'none';
+            window.speechSynthesis.speak(new SpeechSynthesisUtterance(''));
+        });
+
+        const firebaseConfig = { apiKey: "AIzaSyAPFTAwM7yxBsUQ0NYcC7tMUBYna6em0XU", authDomain: "resource-room-a3986.firebaseapp.com", databaseURL: "https://resource-room-a3986-default-rtdb.firebaseio.com", projectId: "resource-room-a3986", storageBucket: "resource-room-a3986.firebasestorage.app", messagingSenderId: "76472526974", appId: "1:76472526974:web:7625a7719318206883d02f" };
+        firebase.initializeApp(firebaseConfig); const db = firebase.database();
+
+        const photoMap = {
+            "宇軒": "images/P1.jpg", "睿穎": "images/P2.jpg", "楷元": "images/P3.jpg", "守恩": "images/P4.jpg",
+            "書愷": "images/P5.jpg", "岷翰": "images/P6.jpg", "承熙": "images/P7.jpg", "盧楷": "images/P8.jpg",
+            "意欣": "images/P9.jpg", "宇晴": "images/P10.jpg", "欽銓": "images/P11.jpg", "澄洋": "images/P12.jpg",
+            "沄恩": "images/P13.jpg", "齊安": "images/P14.jpg"
+        };
+
+        const now = new Date();
+        const startOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
+
+        let isInitialLoad = true;
+        db.ref('attendance').orderByChild('timestamp').startAt(startOfDay).once('value').then(() => { isInitialLoad = false; });
+
+        db.ref('attendance').orderByChild('timestamp').startAt(startOfDay).on('child_added', (snapshot) => {
+            const data = snapshot.val();
+            if (!data.timestamp) return;
+            
+            document.getElementById('idle-msg').style.display = 'none';
+            document.getElementById('student-info').style.display = 'flex'; 
+            
+            const photoEl = document.getElementById('s-photo');
+            if (photoMap[data.name]) { photoEl.src = photoMap[data.name]; photoEl.style.display = 'block'; } 
+            else { photoEl.style.display = 'none'; }
+
+            document.getElementById('s-name').innerText = data.name;
+            document.getElementById('s-time').innerText = "打卡時間：" + data.time;
+            
+            const statusEl = document.getElementById('s-status');
+            statusEl.innerText = "已" + data.status + "！";
+            statusEl.className = "status " + (data.status === "上課" ? "in" : "out");
+            
+            // 🌟 分數看板顯示邏輯
+            const pointsBoard = document.getElementById('s-points-board');
+            if (data.status === "下課" && data.duration) {
+                document.getElementById('p-duration').innerText = `⏱ 時數：${data.duration} (得 ${data.durationPoints || 0} 分)`;
+                document.getElementById('p-extra').innerText = `🎁 課堂表現加分：${data.extraPoints || 0} 分`;
+                document.getElementById('p-total').innerText = `🏆 本次總計獲得：${data.totalPoints || 0} 分！`;
+                pointsBoard.style.display = 'inline-block';
+            } else {
+                pointsBoard.style.display = 'none';
+            }
+
+            // 🔊 語音播報機制
+            if (!isInitialLoad && 'speechSynthesis' in window) {
+                let textToSpeak = data.name + "，" + data.status; 
+                
+                if (data.status === "上課") {
+                    const currentDay = new Date().getDay(); 
+                    if (currentDay === 2 || currentDay === 4) { 
+                        let timeParts = data.time.split(':');
+                        let hour = parseInt(timeParts[0], 10);
+                        let minute = parseInt(timeParts[1], 10);
+
+                        if (hour > 8 || (hour === 8 && minute >= 5)) {
+                            textToSpeak = data.name + "，你遲到囉";
+                        } else if (hour < 8 || (hour === 8 && minute === 0)) {
+                            textToSpeak = data.name + "，很棒，你準時到達了！";
+                        }
+                    }
+                } else if (data.status === "下課") {
+                    // 🌟 下課時用語音鼓勵獲得的分數
+                    let pts = data.totalPoints || 0;
+                    textToSpeak = `${data.name}，下課。本次獲得 ${pts} 分，超棒的！`;
+                }
+
+                let speech = new SpeechSynthesisUtterance(textToSpeak);
+                speech.lang = 'zh-TW'; speech.rate = 1.0;     
+                window.speechSynthesis.speak(speech);
+            }
+        });
+    </script>
+</body>
+</html>  
+
