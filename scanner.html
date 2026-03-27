@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>📱 手機掃描端</title>
+    <title>📱 手機掃描端 - 遲到計分版</title>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
     <style>
@@ -52,7 +52,6 @@
                 const ndef = new NDEFReader(); await ndef.scan();
                 scanBtn.innerText = "📡 感應器開啟中..."; scanBtn.style.backgroundColor = "#2196F3";
                 
-                // 🌟 使用 async 確保能等待雲端資料抓取
                 ndef.addEventListener("reading", async ({ serialNumber }) => {
                     const currentTime = new Date().getTime();
                     if (serialNumber === lastScanSerialNumber && (currentTime - lastScanTime) < 3000) return;
@@ -69,30 +68,48 @@
                         currentStatus = "下課"; studentStatus[serialNumber] = "下課"; 
                         
                         if (checkInTimes[serialNumber]) {
+                            // 🌟 判斷上課打卡時，是否為遲到
+                            let checkInDate = new Date(checkInTimes[serialNumber]);
+                            let h = checkInDate.getHours();
+                            let m = checkInDate.getMinutes();
+                            let timeInt = h * 100 + m; // 將時間轉為數字，例如 08:45 變 845
+                            
+                            let isLate = false;
+                            // 設定各節遲到區間 (該節開始後5分 ~ 該節下課前)，避開下課時間
+                            if ((timeInt >= 755 && timeInt <= 830) ||  // 早修
+                                (timeInt >= 845 && timeInt <= 920) ||  // 第一節
+                                (timeInt >= 935 && timeInt <= 1010) || // 第二節
+                                (timeInt >= 1035 && timeInt <= 1110) || // 第三節
+                                (timeInt >= 1125 && timeInt <= 1200)) { // 第四節
+                                isLate = true;
+                            }
+
                             let diffMs = currentTime - checkInTimes[serialNumber];
                             let diffMins = Math.floor(diffMs / 60000); 
                             let diffSecs = Math.floor((diffMs % 60000) / 1000); 
-                            durationText = diffMins > 0 ? `${diffMins} 分 ${diffSecs} 秒` : `${diffSecs} 秒`;
                             
-                            // 🌟 1. 計算時數分數 (時數 * 0.2 四捨五入)
-                            durationPoints = Math.round(diffMins * 0.2); 
+                            // 🌟 依據是否遲到來計算時數分數 (乘以 0.1)
+                            if (isLate) {
+                                durationPoints = 0; 
+                                durationText = diffMins > 0 ? `${diffMins} 分 ${diffSecs} 秒 (遲到不計分)` : `${diffSecs} 秒 (遲到不計分)`;
+                            } else {
+                                durationPoints = Math.round(diffMins * 0.1); 
+                                durationText = diffMins > 0 ? `${diffMins} 分 ${diffSecs} 秒` : `${diffSecs} 秒`;
+                            }
                             
-                            // 🌟 2. 去雲端抓取老師在大電視給的加分
+                            // 去雲端抓取老師在大電視給的加分
                             const ptSnap = await db.ref('points/' + displayName).once('value');
                             extraPoints = ptSnap.val() || 0;
                             
-                            // 🌟 3. 計算總分
+                            // 計算總分
                             totalPoints = durationPoints + extraPoints;   
                         }
                         
-                        // 下課後，將雲端上該學生的加分歸零，並把大電視上的卡片收起來
                         db.ref('points/' + displayName).set(0);
 
                     } else {
                         currentStatus = "上課"; studentStatus[serialNumber] = "上課"; 
                         checkInTimes[serialNumber] = currentTime; 
-                        
-                        // 上課時，確保雲端分數從 0 開始
                         db.ref('points/' + displayName).set(0);
                     }
 
