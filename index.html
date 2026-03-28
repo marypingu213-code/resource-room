@@ -3,25 +3,38 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>📺 資源班出缺席、加分與排程控制台</title>
+    <title>📺 資源班智慧控制台與提醒系統</title>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
     <style>
         body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #f4f7f6; margin: 0; padding: 20px; display: flex; flex-direction: column; align-items: center; }
         
-        /* 🌟 上方導覽列按鈕 */
+        /* 🔊 語音解鎖畫面 (大電視專用) */
+        #audio-unlock { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background-color: rgba(0, 0, 0, 0.85); color: white; display: flex; flex-direction: column; justify-content: center; align-items: center; z-index: 99999; cursor: pointer; }
+        #audio-unlock h2 { font-size: 60px; margin-bottom: 20px; color: #4CAF50; }
+        #audio-unlock p { font-size: 30px; color: #FFEB3B; }
+
+        /* 🌟 超大彈出提醒視窗 (預設隱藏) */
+        #schedule-alert { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(0,0,0,0.85); z-index: 10000; display: none; justify-content: center; align-items: center; flex-direction: column; text-align: center; }
+        .alert-box { background: white; border-radius: 30px; padding: 50px; width: 80%; max-width: 900px; box-shadow: 0 20px 50px rgba(0,0,0,0.5); border: 12px solid #E91E63; animation: pop-in 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275); }
+        @keyframes pop-in { 0% { transform: scale(0.5); opacity: 0; } 100% { transform: scale(1); opacity: 1; } }
+        .alert-box h1 { color: #E91E63; font-size: 60px; margin-top: 0; margin-bottom: 10px; }
+        .alert-box .time { font-size: 50px; font-weight: bold; color: #3F51B5; }
+        .alert-box .student { font-size: 80px; font-weight: bold; color: #333; margin: 20px 0; letter-spacing: 5px; }
+        .alert-box .note { font-size: 35px; color: #555; background: #FFF3E0; padding: 25px; border-radius: 15px; text-align: left; line-height: 1.5; border-left: 8px solid #FF9800; }
+        .close-alert-btn { margin-top: 40px; background: #4CAF50; color: white; border: none; padding: 20px 60px; font-size: 35px; border-radius: 20px; cursor: pointer; font-weight: bold; box-shadow: 0 8px 15px rgba(0,0,0,0.2); }
+        
+        /* 上方導覽列按鈕 */
         .nav-tabs { display: flex; gap: 15px; margin-bottom: 20px; width: 100%; max-width: 95%; justify-content: center; }
         .nav-btn { background: #E0E0E0; color: #333; border: none; padding: 15px 25px; font-size: 26px; border-radius: 15px 15px 0 0; cursor: pointer; font-weight: bold; transition: 0.3s; border-bottom: 5px solid transparent; }
         .nav-btn.active { background: #fff; color: #4CAF50; border-bottom: 5px solid #4CAF50; }
         .export-btn { background: #FF9800; color: white; border: none; padding: 15px 25px; font-size: 26px; border-radius: 15px; cursor: pointer; font-weight: bold; margin-left: auto; box-shadow: 0 4px 6px rgba(0,0,0,0.1); transition: 0.2s; }
-        .export-btn:hover { background: #F57C00; transform: translateY(-2px); }
 
-        /* 視圖切換區塊 */
         .view-section { width: 100%; max-width: 95%; display: none; flex-direction: column; align-items: center; }
         .view-section.active { display: flex; }
 
-        /* 第一頁：出缺席紀錄樣式 */
-        #latest-scan { font-size: 60px; color: #4CAF50; font-weight: bold; height: 80px; margin-bottom: 20px; text-shadow: 2px 2px 4px rgba(0,0,0,0.1); }
+        /* 第一頁：出缺席 */
+        #latest-scan { font-size: 60px; color: #4CAF50; font-weight: bold; height: 80px; margin-bottom: 20px; }
         .record-container { width: 100%; background: #fff; border-radius: 0 0 15px 15px; box-shadow: 0 8px 16px rgba(0,0,0,0.1); padding: 30px; box-sizing: border-box; }
         .data-table { width: 100%; border-collapse: collapse; text-align: center; font-size: 28px; } 
         .data-table th, .data-table td { padding: 15px; border-bottom: 2px solid #eee; }
@@ -31,33 +44,42 @@
         .duration-text { color: #757575; font-size: 24px; }
         .points-text { color: #E91E63; font-weight: bold; font-size: 30px; }
 
-        /* 第二頁：全班加分板樣式 */
+        /* 第二頁：加分板 */
         #all-students-panel { width: 100%; display: flex; flex-wrap: wrap; gap: 20px; justify-content: center; background: #fff; padding: 40px; border-radius: 0 0 15px 15px; box-shadow: 0 8px 16px rgba(0,0,0,0.1); box-sizing: border-box;}
         .s-card { background: #FAFAFA; border-radius: 20px; padding: 20px; box-shadow: 0 4px 8px rgba(0,0,0,0.05); text-align: center; min-width: 200px; border-top: 8px solid #FFC107; transition: transform 0.2s; border: 1px solid #eee;}
-        .s-card:hover { transform: translateY(-5px); box-shadow: 0 8px 16px rgba(0,0,0,0.1); }
         .s-card h3 { margin: 0 0 10px 0; font-size: 32px; color: #333; }
         .s-card .pts { font-size: 40px; font-weight: bold; color: #E91E63; margin-bottom: 15px; }
         .btn-group { display: flex; justify-content: center; gap: 8px; }
         .btn-group button { padding: 12px 18px; font-size: 22px; border: none; border-radius: 10px; cursor: pointer; color: white; font-weight: bold; }
-        .btn-minus { background: #9E9E9E; }
-        .btn-add1 { background: #4CAF50; }
-        .btn-add5 { background: #2196F3; }
+        .btn-minus { background: #9E9E9E; } .btn-add1 { background: #4CAF50; } .btn-add5 { background: #2196F3; }
 
-        /* 🌟 第三頁：行事曆排程樣式 */
+        /* 第三頁：行事曆排程 */
         .schedule-container { width: 100%; display: flex; flex-direction: column; gap: 25px; background: #fff; padding: 40px; border-radius: 0 0 15px 15px; box-shadow: 0 8px 16px rgba(0,0,0,0.1); box-sizing: border-box; }
-        .schedule-card { background: #fdfdfd; border-radius: 15px; border-left: 10px solid #673AB7; box-shadow: 0 4px 8px rgba(0,0,0,0.05); overflow: hidden; }
-        .schedule-header { background: #ede7f6; padding: 15px 25px; font-size: 30px; font-weight: bold; color: #512DA8; border-bottom: 2px solid #d1c4e9; display: flex; justify-content: space-between; align-items: center;}
-        .special-note { font-size: 22px; background: #FFEB3B; color: #333; padding: 5px 15px; border-radius: 10px; font-weight: bold; }
+        .schedule-card { background: #fdfdfd; border-radius: 15px; border-left: 10px solid #673AB7; box-shadow: 0 4px 8px rgba(0,0,0,0.05); overflow: hidden; margin-bottom: 25px; }
+        .schedule-header { background: #ede7f6; padding: 15px 25px; font-size: 30px; font-weight: bold; color: #512DA8; border-bottom: 2px solid #d1c4e9; }
         .schedule-table { width: 100%; border-collapse: collapse; font-size: 24px; text-align: left; }
         .schedule-table td { padding: 15px 25px; border-bottom: 1px solid #eee; }
-        .schedule-table tr:last-child td { border-bottom: none; }
-        .time-col { font-weight: bold; color: #3F51B5; width: 180px; }
-        .student-col { font-weight: bold; font-size: 26px; width: 200px; }
-        .note-col { color: #616161; }
-        .highlight-text { color: #E91E63; font-weight: bold; }
+        .time-col { font-weight: bold; color: #3F51B5; width: 150px; }
+        .student-col { font-weight: bold; font-size: 28px; width: 200px; color: #E91E63; }
+        .note-col { color: #616161; line-height: 1.4; }
     </style>
 </head>
 <body>
+
+    <div id="audio-unlock">
+        <h2>👉 點擊螢幕啟動智慧控制台 👈</h2>
+        <p>解鎖語音與「自動跳出提醒」功能 🔊</p>
+    </div>
+
+    <div id="schedule-alert">
+        <div class="alert-box">
+            <h1 class="blink-text">🔔 治療課即將開始 🔔</h1>
+            <div id="alert-time" class="time">09:00</div>
+            <div id="alert-student" class="student">姓名</div>
+            <div id="alert-note" class="note">注意事項</div>
+            <button onclick="closeAlert()" class="close-btn">我知道了，關閉提醒</button>
+        </div>
+    </div>
 
     <div class="nav-tabs">
         <button class="nav-btn active" onclick="switchTab('view-attendance', this)">📝 出缺席紀錄</button>
@@ -70,86 +92,125 @@
         <div id="latest-scan">等待感應中...</div>
         <div class="record-container">
             <table class="data-table">
-                <thead>
-                    <tr>
-                        <th>時間</th>
-                        <th>學生姓名</th>
-                        <th>狀態</th>
-                        <th>本次時數</th>
-                        <th>獲得總分</th>
-                    </tr>
-                </thead>
+                <thead><tr><th>時間</th><th>學生姓名</th><th>狀態</th><th>本次時數</th><th>獲得總分</th></tr></thead>
                 <tbody id="recordBody"></tbody>
             </table>
         </div>
     </div>
 
     <div id="view-points" class="view-section">
-        <div id="all-students-panel">
-            </div>
+        <div id="all-students-panel"></div>
     </div>
 
     <div id="view-schedule" class="view-section">
-        <div class="schedule-container">
-            
-            <div class="schedule-card" style="border-left-color: #4CAF50;">
-                <div class="schedule-header" style="background: #E8F5E9; color: #2E7D32;">
-                    4 / 2 (四) - 專業團隊治療
-                </div>
-                <table class="schedule-table">
-                    <tr><td class="time-col">09:00 - 10:00</td><td class="student-col">201 陳宥慈</td><td class="note-col">請治療師至 <span class="highlight-text">201</span> 接學生，上完課請治療師送回 201</td></tr>
-                    <tr><td class="time-col">10:00 - 11:00</td><td class="student-col">105 詹澄洋</td><td class="note-col">請治療師至 <span class="highlight-text">105</span> 接學生，上完課請治療師送回 105</td></tr>
-                    <tr><td class="time-col">11:00 - 12:00</td><td class="student-col">106 劉沄恩</td><td class="note-col">請治療師至 <span class="highlight-text">106</span> 接學生，上完課請治療師送回 106</td></tr>
-                </table>
+        <div id="schedule-container-box" class="schedule-container">
             </div>
-
-            <div class="schedule-card" style="border-left-color: #2196F3;">
-                <div class="schedule-header" style="background: #E3F2FD; color: #1565C0;">
-                    4 / 9 (四) - 專業團隊治療
-                </div>
-                <table class="schedule-table">
-                    <tr><td class="time-col">09:00 - 10:00</td><td class="student-col">202 楊翔舜</td><td class="note-col">請治療師至 <span class="highlight-text">資源班</span> 接學生，上完課請治療師送回資源班</td></tr>
-                    <tr><td class="time-col">10:00 - 11:00</td><td class="student-col">202 張瑀安</td><td class="note-col">請治療師至 <span class="highlight-text">202</span> 接學生，上完課請治療師送回 202</td></tr>
-                </table>
-            </div>
-
-            <div class="schedule-card" style="border-left-color: #E91E63;">
-                <div class="schedule-header" style="background: #FCE4EC; color: #C2185B;">
-                    4 / 14 (二) - ★聽能管理
-                    <div class="special-note">殷其遠老師 (1小時) | 📞 0912819295 | 📍 3F 諮心室</div>
-                </div>
-                <table class="schedule-table">
-                    <tr><td class="time-col">10:00 - 11:00</td><td class="student-col">307 林渝帛</td><td class="note-col">請聽力師至 <span class="highlight-text">音樂教室</span> 接學生，上完課請治療師送回 307</td></tr>
-                    <tr><td class="time-col">11:00 - 12:00</td><td class="student-col">203 陳恩凱</td><td class="note-col">請聽力師至 <span class="highlight-text">203</span> 接學生，上完課請治療師送回 203</td></tr>
-                </table>
-            </div>
-
-            <div class="schedule-card" style="border-left-color: #FF9800;">
-                <div class="schedule-header" style="background: #FFF3E0; color: #E65100;">
-                    4 / 15 (三) - 專業團隊治療
-                </div>
-                <table class="schedule-table">
-                    <tr><td class="time-col">09:00 - 10:00</td><td class="student-col">101 徐盧楷</td><td class="note-col">請治療師至 <span class="highlight-text">資源班</span> 接學生，上完課請治療師送回資源班</td></tr>
-                    <tr><td class="time-col">10:00 - 11:00</td><td class="student-col">104 劉欽銓</td><td class="note-col">請治療師至 <span class="highlight-text">資源班</span> 接學生，上完課請治療師送回 104</td></tr>
-                    <tr><td class="time-col">11:00 - 12:00</td><td class="student-col">103 郭宇晴</td><td class="note-col">請治療師至 <span class="highlight-text">103</span> 接學生，上完課請治療師送回 103</td></tr>
-                </table>
-            </div>
-
-        </div>
     </div>
 
     <script>
+        // 🔊 解鎖音效權限
+        document.getElementById('audio-unlock').addEventListener('click', function() {
+            this.style.display = 'none';
+            window.speechSynthesis.speak(new SpeechSynthesisUtterance(''));
+        });
+
         const firebaseConfig = { apiKey: "AIzaSyAPFTAwM7yxBsUQ0NYcC7tMUBYna6em0XU", authDomain: "resource-room-a3986.firebaseapp.com", databaseURL: "https://resource-room-a3986-default-rtdb.firebaseio.com", projectId: "resource-room-a3986", storageBucket: "resource-room-a3986.firebasestorage.app", messagingSenderId: "76472526974", appId: "1:76472526974:web:7625a7719318206883d02f" };
         firebase.initializeApp(firebaseConfig); const db = firebase.database();
 
-        const allStudents = [
-            "宇軒", "睿穎", "楷元", "守恩", "書愷", "岷翰", "承熙",
-            "盧楷", "意欣", "宇晴", "欽銓", "澄洋", "沄恩", "齊安"
+        // 🌟 【智慧行事曆清單】未來如果有新的排程，只要照著格式加在這裡就好！
+        const therapistSchedule = [
+            { date: "04/02", time: "09:00", title: "專業團隊治療", student: "201 陳宥慈", note: "請治療師至 201 接學生，上完課請治療師送回 201" },
+            { date: "04/02", time: "10:00", title: "專業團隊治療", student: "105 詹澄洋", note: "請治療師至 105 接學生，上完課請治療師送回 105" },
+            { date: "04/02", time: "11:00", title: "專業團隊治療", student: "106 劉沄恩", note: "請治療師至 106 接學生，上完課請治療師送回 106" },
+
+            { date: "04/09", time: "09:00", title: "專業團隊治療", student: "202 楊翔舜", note: "請治療師至 資源班 接學生，上完課請治療師送回資源班" },
+            { date: "04/09", time: "10:00", title: "專業團隊治療", student: "202 張瑀安", note: "請治療師至 202 接學生，上完課請治療師送回 202" },
+
+            { date: "04/14", time: "10:00", title: "聽能管理", student: "307 林渝帛", note: "殷其遠老師 | 📞0912819295 | 📍3F 諮心室<br>請聽力師至 音樂教室 接學生，上完課送回 307" },
+            { date: "04/14", time: "11:00", title: "聽能管理", student: "203 陳恩凱", note: "殷其遠老師 | 📞0912819295 | 📍3F 諮心室<br>請聽力師至 203 接學生，上完課送回 203" },
+
+            { date: "04/15", time: "09:00", title: "專業團隊治療", student: "101 徐盧楷", note: "請治療師至 資源班 接學生，上完課請治療師送回資源班" },
+            { date: "04/15", time: "10:00", title: "專業團隊治療", student: "104 劉欽銓", note: "請治療師至 資源班 接學生，上完課請治療師送回 104" },
+            { date: "04/15", time: "11:00", title: "專業團隊治療", student: "103 郭宇晴", note: "請治療師至 103 接學生，上完課請治療師送回 103" }
         ];
 
+        // 🌟 自動把清單畫成漂亮的表格
+        function renderSchedule() {
+            const container = document.getElementById('schedule-container-box');
+            let grouped = {};
+            // 將排程照日期分組
+            therapistSchedule.forEach(evt => {
+                if (!grouped[evt.date]) grouped[evt.date] = [];
+                grouped[evt.date].push(evt);
+            });
+
+            for (const date in grouped) {
+                let html = `<div class="schedule-card"><div class="schedule-header">📅 ${date} 排程</div><table class="schedule-table">`;
+                grouped[date].forEach(evt => {
+                    html += `<tr><td class="time-col">${evt.time}</td><td class="student-col">${evt.student}</td><td class="note-col">${evt.note}</td></tr>`;
+                });
+                html += `</table></div>`;
+                container.innerHTML += html;
+            }
+        }
+        renderSchedule();
+
+        // 🌟 智慧鬧鐘機制：每 10 秒檢查一次時間
+        let alertedEvents = new Set(); // 記住已經提醒過的事件，避免重複叫
+        
+        setInterval(() => {
+            const now = new Date();
+            const month = String(now.getMonth() + 1).padStart(2, '0');
+            const day = String(now.getDate()).padStart(2, '0');
+            const todayStr = `${month}/${day}`; // 取得今天日期，例如 "04/02"
+            const currentMins = now.getHours() * 60 + now.getMinutes();
+
+            therapistSchedule.forEach((event, index) => {
+                if (event.date === todayStr) {
+                    const [evtH, evtM] = event.time.split(':').map(Number);
+                    const evtMins = evtH * 60 + evtM;
+                    
+                    // 💡 關鍵：如果「排定時間 - 現在時間 == 5 分鐘」，且還沒提醒過，就觸發！
+                    if (evtMins - currentMins === 5 && !alertedEvents.has(index)) {
+                        alertedEvents.add(index);
+                        triggerAlert(event);
+                    }
+                }
+            });
+        }, 10000);
+
+        // 🌟 觸發彈出視窗與語音播報
+        function triggerAlert(event) {
+            // 填寫彈出視窗內容
+            document.getElementById('alert-time').innerText = "時間：" + event.time;
+            document.getElementById('alert-student').innerText = event.student;
+            document.getElementById('alert-note').innerHTML = event.note;
+            
+            // 強制顯示彈出視窗
+            document.getElementById('schedule-alert').style.display = 'flex';
+
+            // 播放語音
+            if ('speechSynthesis' in window) {
+                // 自動把 "201 陳宥慈" 變成 "陳宥慈" 讓語音唸起來更自然
+                let nameOnly = event.student.split(' ').pop(); 
+                let text = `提醒您，再過5分鐘，${event.time}，是 ${nameOnly} 的 ${event.title}。`;
+                
+                let speech = new SpeechSynthesisUtterance(text);
+                speech.lang = 'zh-TW';
+                speech.rate = 1.0;
+                window.speechSynthesis.speak(speech);
+            }
+        }
+
+        // 關閉提醒視窗
+        function closeAlert() {
+            document.getElementById('schedule-alert').style.display = 'none';
+        }
+
+        // ================= 以下為原有的打卡與計分功能 =================
+        const allStudents = [ "宇軒", "睿穎", "楷元", "守恩", "書愷", "岷翰", "承熙", "盧楷", "意欣", "宇晴", "欽銓", "澄洋", "沄恩", "齊安" ];
         let currentPoints = {};
 
-        // 🌟 頁籤切換邏輯
         function switchTab(viewId, btnElement) {
             document.querySelectorAll('.view-section').forEach(el => el.classList.remove('active'));
             document.querySelectorAll('.nav-btn').forEach(el => el.classList.remove('active'));
@@ -158,70 +219,38 @@
         }
 
         function exportToExcel() {
-            let csvContent = "\uFEFF"; 
-            csvContent += "時間,學生姓名,狀態,本次時數,獲得總分\n"; 
-
-            const rows = document.querySelectorAll('#recordBody tr');
-            rows.forEach(row => {
+            let csvContent = "\uFEFF時間,學生姓名,狀態,本次時數,獲得總分\n"; 
+            document.querySelectorAll('#recordBody tr').forEach(row => {
                 const cols = row.querySelectorAll('td');
                 if(cols.length > 0) {
-                    const time = cols[0].innerText;
-                    const name = cols[1].innerText;
-                    const status = cols[2].innerText;
-                    const duration = cols[3].innerText.replace('-', '');
-                    const points = cols[4].innerText.replace('🏆 ', '').replace(' 分', '').replace('-', '');
-                    csvContent += `${time},${name},${status},${duration},${points}\n`;
+                    csvContent += `${cols[0].innerText},${cols[1].innerText},${cols[2].innerText},${cols[3].innerText.replace('-', '')},${cols[4].innerText.replace('🏆 ', '').replace(' 分', '').replace('-', '')}\n`;
                 }
             });
-
             const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
             const link = document.createElement("a");
-            const url = URL.createObjectURL(blob);
-            const dateStr = new Date().toLocaleDateString().replace(/\//g, '-');
-            link.setAttribute("href", url);
-            link.setAttribute("download", `資源班出缺席報表_${dateStr}.csv`);
-            link.style.visibility = 'hidden';
-            document.body.appendChild(link);
-            link.click();
-            document.body.removeChild(link);
+            link.href = URL.createObjectURL(blob);
+            link.download = `資源班出缺席報表_${new Date().toLocaleDateString().replace(/\//g, '-')}.csv`;
+            document.body.appendChild(link); link.click(); document.body.removeChild(link);
         }
 
         const tbody = document.getElementById('recordBody');
         const latestScanDiv = document.getElementById('latest-scan');
         const pointsPanel = document.getElementById('all-students-panel');
-
-        const now = new Date();
-        const startOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
+        const startOfDay = new Date(new Date().getFullYear(), new Date().getMonth(), new Date().getDate()).getTime();
 
         function renderPointsPanel() {
             pointsPanel.innerHTML = ''; 
             allStudents.forEach(name => {
                 const pts = currentPoints[name] || 0;
-                const card = document.createElement('div');
-                card.className = 's-card';
-                card.innerHTML = `
-                    <h3>${name}</h3>
-                    <div class="pts">${pts} 分</div>
-                    <div class="btn-group">
-                        <button class="btn-minus" onclick="addPoint('${name}', -1)">-1</button>
-                        <button class="btn-add1" onclick="addPoint('${name}', 1)">+1</button>
-                        <button class="btn-add5" onclick="addPoint('${name}', 5)">+5</button>
-                    </div>
-                `;
-                pointsPanel.appendChild(card);
+                pointsPanel.innerHTML += `<div class="s-card"><h3>${name}</h3><div class="pts">${pts} 分</div><div class="btn-group"><button class="btn-minus" onclick="addPoint('${name}', -1)">-1</button><button class="btn-add1" onclick="addPoint('${name}', 1)">+1</button><button class="btn-add5" onclick="addPoint('${name}', 5)">+5</button></div></div>`;
             });
         }
-
         renderPointsPanel();
 
-        db.ref('points').on('value', (snapshot) => {
-            currentPoints = snapshot.val() || {};
-            renderPointsPanel(); 
-        });
+        db.ref('points').on('value', snap => { currentPoints = snap.val() || {}; renderPointsPanel(); });
 
-        db.ref('attendance').orderByChild('timestamp').startAt(startOfDay).on('child_added', (snapshot) => {
-            const data = snapshot.val();
-            if (!data.timestamp) return;
+        db.ref('attendance').orderByChild('timestamp').startAt(startOfDay).on('child_added', snap => {
+            const data = snap.val(); if (!data.timestamp) return;
             
             let durationHtml = `<span style="color: #ccc;">-</span>`;
             let pointsHtml = `<span style="color: #ccc;">-</span>`;
@@ -232,29 +261,18 @@
                 pointsHtml = `<span class="points-text">🏆 ${data.totalPoints || 0} 分</span>`;
                 latestText = `👋 ${data.name} 已下課！(得 ${data.totalPoints || 0} 分)`;
             }
-            
             latestScanDiv.innerText = latestText;
             latestScanDiv.style.color = data.status === "上課" ? "#2196F3" : "#FF9800";
 
             const row = document.createElement('tr');
-            const statusClass = data.status === "上課" ? "status-in" : "status-out";
-
-            row.innerHTML = `
-                <td>${data.time}</td>
-                <td>${data.name}</td>
-                <td class="${statusClass}">${data.status}</td>
-                <td>${durationHtml}</td>
-                <td>${pointsHtml}</td>
-            `;
+            row.innerHTML = `<td>${data.time}</td><td>${data.name}</td><td class="${data.status === "上課" ? "status-in" : "status-out"}">${data.status}</td><td>${durationHtml}</td><td>${pointsHtml}</td>`;
             tbody.insertBefore(row, tbody.firstChild);
         });
 
         window.addPoint = function(name, ptsToAdd) {
             db.ref('points/' + name).once('value').then(snap => {
-                let current = snap.val() || 0;
-                let newVal = current + ptsToAdd;
-                if (newVal < 0) newVal = 0; 
-                db.ref('points/' + name).set(newVal);
+                let newVal = (snap.val() || 0) + ptsToAdd;
+                db.ref('points/' + name).set(newVal < 0 ? 0 : newVal);
             });
         };
     </script>
