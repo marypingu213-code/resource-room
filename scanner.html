@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>📱 手機掃描端 - 遲到計分版</title>
+    <title>📱 手機掃描端 - 出席固定計分版</title>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
     <style>
@@ -68,19 +68,19 @@
                         currentStatus = "下課"; studentStatus[serialNumber] = "下課"; 
                         
                         if (checkInTimes[serialNumber]) {
-                            // 🌟 判斷上課打卡時，是否為遲到
+                            // 判斷上課打卡時，是否為遲到
                             let checkInDate = new Date(checkInTimes[serialNumber]);
                             let h = checkInDate.getHours();
                             let m = checkInDate.getMinutes();
-                            let timeInt = h * 100 + m; // 將時間轉為數字，例如 08:45 變 845
+                            let timeInt = h * 100 + m; 
                             
                             let isLate = false;
                             // 設定各節遲到區間 (該節開始後5分 ~ 該節下課前)，避開下課時間
-                            if ((timeInt >= 755 && timeInt <= 830) ||  // 早修
-                                (timeInt >= 845 && timeInt <= 920) ||  // 第一節
-                                (timeInt >= 935 && timeInt <= 1010) || // 第二節
-                                (timeInt >= 1035 && timeInt <= 1110) || // 第三節
-                                (timeInt >= 1125 && timeInt <= 1200)) { // 第四節
+                            if ((timeInt >= 755 && timeInt <= 830) ||  
+                                (timeInt >= 845 && timeInt <= 920) ||  
+                                (timeInt >= 935 && timeInt <= 1010) || 
+                                (timeInt >= 1035 && timeInt <= 1110) || 
+                                (timeInt >= 1125 && timeInt <= 1200)) { 
                                 isLate = true;
                             }
 
@@ -88,12 +88,12 @@
                             let diffMins = Math.floor(diffMs / 60000); 
                             let diffSecs = Math.floor((diffMs % 60000) / 1000); 
                             
-                            // 🌟 依據是否遲到來計算時數分數 (乘以 0.1)
+                            // 🌟 全新計分邏輯：遲到 0 分，準時一律 1 分
                             if (isLate) {
                                 durationPoints = 0; 
                                 durationText = diffMins > 0 ? `${diffMins} 分 ${diffSecs} 秒 (遲到不計分)` : `${diffSecs} 秒 (遲到不計分)`;
                             } else {
-                                durationPoints = Math.round(diffMins * 0.1); 
+                                durationPoints = 1; // 🌟 修改為固定 1 分
                                 durationText = diffMins > 0 ? `${diffMins} 分 ${diffSecs} 秒` : `${diffSecs} 秒`;
                             }
                             
