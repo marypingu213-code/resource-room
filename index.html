@@ -31,11 +31,16 @@
         .duration-text { color: #757575; font-size: 24px; }
         .points-text { color: #E91E63; font-weight: bold; font-size: 30px; }
 
-        /* 🌟 新增：注意事項公佈欄樣式 */
-        .notice-board { background: #E8F5E9; border-left: 10px solid #4CAF50; padding: 20px 30px; margin-bottom: 30px; border-radius: 10px; width: 100%; box-shadow: 0 4px 10px rgba(0,0,0,0.05); font-size: 26px; color: #333; text-align: left; box-sizing: border-box; }
-        .notice-board h3 { margin: 0 0 15px 0; color: #2E7D32; font-size: 32px; display: flex; align-items: center; }
-        .notice-board ul { columns: 2; margin: 0; padding-left: 20px; line-height: 1.6; }
-        .notice-board li { margin-bottom: 10px; font-weight: bold; color: #424242; }
+        /* 🌟 新增：注意事項與治療排程 左右雙欄樣式 */
+        .notice-board { background: #E8F5E9; border-left: 10px solid #4CAF50; padding: 20px 30px; margin-bottom: 30px; border-radius: 10px; width: 100%; box-shadow: 0 4px 10px rgba(0,0,0,0.05); box-sizing: border-box; display: flex; gap: 40px; }
+        .notice-col { flex: 1; text-align: left; }
+        .notice-col h3 { margin: 0 0 15px 0; color: #2E7D32; font-size: 30px; border-bottom: 2px dashed #A5D6A7; padding-bottom: 10px; }
+        .notice-col ul { margin: 0; padding-left: 20px; line-height: 1.6; font-size: 24px; }
+        .notice-col li { margin-bottom: 8px; font-weight: bold; color: #424242; }
+        
+        /* 治療排程專屬文字樣式 */
+        .therapy-title { color: #1565C0; font-size: 24px; margin-top: 15px; margin-bottom: 5px; font-weight: bold; }
+        .therapy-list { font-size: 22px; color: #555; margin-left: 15px; line-height: 1.5; font-weight: bold; }
 
         /* 第二頁：全班加分板樣式 */
         #all-students-panel { width: 100%; display: flex; flex-wrap: wrap; gap: 20px; justify-content: center; background: #fff; padding: 40px; border-radius: 0 0 15px 15px; box-shadow: 0 8px 16px rgba(0,0,0,0.1); box-sizing: border-box;}
@@ -77,18 +82,43 @@
     </div>
 
     <div id="view-points" class="view-section">
+        
         <div class="notice-board">
-            <h3>📌 資源班行事曆 & 注意事項</h3>
-            <ul>
-                <li>4/1 兒童、4/2 PT</li>
-                <li>4/16 - 4/17 月考</li>
-                <li>4/21 戶外、4/23 三戶外</li>
-                <li>5/2 - 5/3 六月考</li>
-                <li>6/15 畢 (香格)</li>
-                <li>6/23 - 6/24 月考</li>
-                <li>6/30 結 / 掃</li>
-                <li>5月 雲門 (6/13、6/20)</li>
-            </ul>
+            <div class="notice-col">
+                <h3>📌 資源班行事曆 & 注意事項</h3>
+                <ul>
+                    <li>4/1 兒童、4/2 PT</li>
+                    <li>4/16 - 4/17 月考</li>
+                    <li>4/21 戶外、4/23 三戶外</li>
+                    <li>5/2 - 5/3 六月考</li>
+                    <li>6/15 畢 (香格)</li>
+                    <li>6/23 - 6/24 月考</li>
+                    <li>6/30 結 / 掃</li>
+                    <li>5月 雲門 (6/13、6/20)</li>
+                </ul>
+            </div>
+            
+            <div class="notice-col">
+                <h3>🩺 專業團隊治療排程 (3F 諮心室)</h3>
+                
+                <div class="therapy-title">★ 職能治療 (張凱鈞老師)</div>
+                <div class="therapy-list">
+                    3/25(三)：意欣(09:00)、齊安(10:00)、子睿(11:00)<br>
+                    4/02(四)：宥慈(09:00)、澄洋(10:00)、沄恩(11:00)<br>
+                    4/09(四)：翔舜(09:00)、瑀安(10:00)<br>
+                    4/15(三)：盧楷(09:00)、欽銓(10:00)、宇晴(11:00)
+                </div>
+
+                <div class="therapy-title">★ 聽能管理 (殷其遠老師)</div>
+                <div class="therapy-list">
+                    4/14(二)：渝帛(10:00)、恩凱(11:00)
+                </div>
+
+                <div class="therapy-title">★ 心理治療 (李芳儀老師)</div>
+                <div class="therapy-list">
+                    5/25(一)：宇晴(09:00)、宇晴家長(10:00)
+                </div>
+            </div>
         </div>
 
         <div id="all-students-panel">
